@@ -1,0 +1,19 @@
+# Web框架
+fastapi
+uvicorn
+
+# 数据验证
+pydantic
+
+# 数据库
+SQLAlchemy
+PyMySQL
+
+# HTTP客户端
+requests
+
+# AI调用
+openai
+
+# 数据处理
+pandas
