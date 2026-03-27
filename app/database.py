@@ -22,15 +22,15 @@ engine = create_engine(
 )
 
 # 创建Session工厂
-session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+sessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # 创建Base类
 Base = declarative_base()
 
 
 # 获取数据库Session的函数
-def get_db():
-    db = session_factory()
+def get_db_instance():
+    db = sessionLocal()
     try:
         yield db
     finally:

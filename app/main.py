@@ -3,18 +3,20 @@
 @Author: GeChao
 @File: main.py
 '''
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+
+from app.config import logger
 
 app = FastAPI()
 
-@app.get("/")
-async def root():
-    return {"message": "Hello World"}
+@app.middleware('http')
+async def log_request(request: Request, call_next):
+    logger.info(f"Request: {request.method} {request.url}")
+    response = await call_next(request)
+    logger.info(f"Response: {response.status_code} {request.url}")
+    return response
 
 
-@app.get("/hello/{name}")
-async def read_item(name: str):
-    return {"message": f"Hello {name}"}
 
 if __name__ == '__main__':
     import uvicorn
