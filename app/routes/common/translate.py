@@ -41,10 +41,9 @@ async def route_batch_text_translate(request: Request, batch_translate_req: Batc
     des_lang_type = batch_translate_req.des_lang_type.upper()
     content_list = batch_translate_req.content_list
 
-    
     ret_data, usage = service_batch_text_translate(des_lang_type=des_lang_type, content_list=content_list)
     logger.info(f"batch_translate result: ret_data={ret_data}, usage={usage}")
-    
+
     if not ret_data:
         return JSONResponse(content={"success": False, "msg": "Translation failed", "data": {}, "usage": usage})
 

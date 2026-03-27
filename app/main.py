@@ -5,6 +5,7 @@
 '''
 from fastapi import FastAPI, Request
 from app.routes.common.translate import router_r1 as translate_router_r1
+from app.routes.common.ocr import router_r1 as ocr_router_r1
 from app.config import logger
 
 app = FastAPI()
@@ -19,6 +20,7 @@ async def log_request(request: Request, call_next):
 
 
 app.include_router(translate_router_r1)
+app.include_router(ocr_router_r1)
 
 if __name__ == '__main__':
     import uvicorn
