@@ -18,9 +18,7 @@ async def log_request(request: Request, call_next):
     return response
 
 
-
 app.include_router(translate_router_r1)
-
 
 if __name__ == '__main__':
     import uvicorn

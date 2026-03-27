@@ -22,7 +22,7 @@ headers = {
 }
 
 
-def test_translate():
+def test_translate() -> None:
     url = f"{base_url}/api/r1/c/translate"
     data = {
         "des_lang_type": "English",

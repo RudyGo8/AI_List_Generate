@@ -12,7 +12,7 @@ from app.models.constants import DataEnable, LLMType
 ''' 调用qwen模型 '''
 
 
-def ai_chat_qwen(image_url_list, user_prompt, system_prompt=None):
+def ai_chat_qwen(image_url_list, user_prompt, system_prompt=None) -> (str, dict):
     try:
         db = next(get_db_instance())
 

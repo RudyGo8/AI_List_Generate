@@ -13,11 +13,14 @@ from app.models.constants import DataEnable
 def api_key_check(accesskey: str = Header(...), accesssecret: str = Header(...)):
     db = next(get_db_instance())
 
-    client = db.query(SysClientConf).filter(
-        SysClientConf.api_key == accesskey,
-        SysClientConf.api_secret == accesssecret,
-        SysClientConf.enable == DataEnable.ON.value
-    ).first()
+    try:
+        client = db.query(SysClientConf).filter(
+            SysClientConf.api_key == accesskey,
+            SysClientConf.api_secret == accesssecret,
+            SysClientConf.enable == DataEnable.ON.value
+        ).first()
 
-    if not client:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        if not client:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+    finally:
+        db.close()

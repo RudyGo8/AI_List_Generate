@@ -1,3 +1,13 @@
 {"time": "2026-03-27 15:26:53,992", "name": "app.config", "level": "INFO", "message": "Request: POST http://localhost:1235/api/r1/c/translate", "filename": "main.py", "funcName": "log_request", "lineno": 15}
 {"time": "2026-03-27 15:26:57,200", "name": "httpx", "level": "INFO", "message": "HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions \"HTTP/1.1 200 OK\"", "filename": "_client.py", "funcName": "_send_single_request", "lineno": 1025}
 {"time": "2026-03-27 15:26:57,206", "name": "app.config", "level": "INFO", "message": "Response: 200 http://localhost:1235/api/r1/c/translate", "filename": "main.py", "funcName": "log_request", "lineno": 17}
+{"time": "2026-03-27 15:30:07,137", "name": "app.config", "level": "INFO", "message": "Request: GET http://localhost:1235/docs", "filename": "main.py", "funcName": "log_request", "lineno": 15}
+{"time": "2026-03-27 15:30:07,137", "name": "app.config", "level": "INFO", "message": "Response: 200 http://localhost:1235/docs", "filename": "main.py", "funcName": "log_request", "lineno": 17}
+{"time": "2026-03-27 15:30:07,336", "name": "app.config", "level": "INFO", "message": "Request: GET http://localhost:1235/openapi.json", "filename": "main.py", "funcName": "log_request", "lineno": 15}
+{"time": "2026-03-27 15:30:07,340", "name": "app.config", "level": "INFO", "message": "Response: 200 http://localhost:1235/openapi.json", "filename": "main.py", "funcName": "log_request", "lineno": 17}
+{"time": "2026-03-27 15:51:22,350", "name": "app.config", "level": "INFO", "message": "Request: POST http://localhost:1235/api/v1/c/batchtranslate", "filename": "main.py", "funcName": "log_request", "lineno": 15}
+{"time": "2026-03-27 15:51:22,350", "name": "app.config", "level": "INFO", "message": "Response: 404 http://localhost:1235/api/v1/c/batchtranslate", "filename": "main.py", "funcName": "log_request", "lineno": 17}
+{"time": "2026-03-27 15:51:34,710", "name": "app.config", "level": "INFO", "message": "Request: GET http://localhost:1235/docs", "filename": "main.py", "funcName": "log_request", "lineno": 15}
+{"time": "2026-03-27 15:51:34,710", "name": "app.config", "level": "INFO", "message": "Response: 200 http://localhost:1235/docs", "filename": "main.py", "funcName": "log_request", "lineno": 17}
+{"time": "2026-03-27 15:51:34,887", "name": "app.config", "level": "INFO", "message": "Request: GET http://localhost:1235/openapi.json", "filename": "main.py", "funcName": "log_request", "lineno": 15}
+{"time": "2026-03-27 15:51:34,887", "name": "app.config", "level": "INFO", "message": "Response: 200 http://localhost:1235/openapi.json", "filename": "main.py", "funcName": "log_request", "lineno": 17}
