@@ -4,10 +4,11 @@
 @File: main.py
 '''
 from fastapi import FastAPI, Request
-
+from app.routes.common.translate import router_r1 as translate_router_r1
 from app.config import logger
 
 app = FastAPI()
+
 
 @app.middleware('http')
 async def log_request(request: Request, call_next):
@@ -18,7 +19,10 @@ async def log_request(request: Request, call_next):
 
 
 
+app.include_router(translate_router_r1)
+
+
 if __name__ == '__main__':
     import uvicorn
 
-    uvicorn.run(app, host='0.0.0.0', port=8001)
+    uvicorn.run(app, host='0.0.0.0', port=1235)

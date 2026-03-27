@@ -1,0 +1,6 @@
+{"time": "2026-03-27 15:23:53,771", "name": "app.config", "level": "INFO", "message": "Request: POST http://localhost:1235/api/r1/c/translate", "filename": "main.py", "funcName": "log_request", "lineno": 15}
+{"time": "2026-03-27 15:23:56,978", "name": "httpx", "level": "INFO", "message": "HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions \"HTTP/1.1 200 OK\"", "filename": "_client.py", "funcName": "_send_single_request", "lineno": 1025}
+{"time": "2026-03-27 15:23:56,982", "name": "app.config", "level": "INFO", "message": "Response: 200 http://localhost:1235/api/r1/c/translate", "filename": "main.py", "funcName": "log_request", "lineno": 17}
+{"time": "2026-03-27 15:26:26,586", "name": "app.config", "level": "INFO", "message": "Request: POST http://localhost:1235/api/r1/c/translate", "filename": "main.py", "funcName": "log_request", "lineno": 15}
+{"time": "2026-03-27 15:26:29,999", "name": "httpx", "level": "INFO", "message": "HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions \"HTTP/1.1 200 OK\"", "filename": "_client.py", "funcName": "_send_single_request", "lineno": 1025}
+{"time": "2026-03-27 15:26:30,000", "name": "app.config", "level": "INFO", "message": "Response: 200 http://localhost:1235/api/r1/c/translate", "filename": "main.py", "funcName": "log_request", "lineno": 17}
