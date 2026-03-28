@@ -73,7 +73,7 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 if __name__ == '__main__':
-    logger = setup_logging("test_log.log")
+    setup_logging("test_log.log")
     test_logger = logging.getLogger(__name__)
 
     test_logger.info("This is a test log message.")
