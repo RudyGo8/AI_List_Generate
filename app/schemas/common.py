@@ -12,10 +12,10 @@ from pydantic import BaseModel, Field, ConfigDict
 class CommonResponse(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    success: bool = Field(..., description="表示请求是否成功")
-    msg: str = Field(..., description="返回的消息内容")
-    data: Optional[Dict[str, Any]] = Field(default=None, description="包含接口数据字段")
-    usage: Optional[Dict[str, Any]] = Field(default=None, description="使用情况的相关信息")
+    success: bool = Field(..., description="Request Was Successful Or Not")
+    msg: str = Field(..., description="Return Message Content")
+    data: Optional[Dict[str, Any]] = Field(default=None, description="Interface Data Fields")
+    usage: Optional[Dict[str, Any]] = Field(default=None, description="Usage-related Information")
 
 
 

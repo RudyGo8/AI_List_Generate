@@ -8,4 +8,4 @@ from typing import Optional, List, Dict, Any
 
 
 class OcrRequest(BaseModel):
-    image_url_list: Optional[List[HttpUrl]] = Field(None, description="图片URL列表")
+    image_url_list: Optional[List[HttpUrl]] = Field(None, description="Picture URL List")

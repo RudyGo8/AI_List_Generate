@@ -18,7 +18,7 @@ async def log_request(request: Request, call_next):
     logger.info(f"Response: {response.status_code} {request.url}")
     return response
 
-
+app.include_router(shop_router_r1)
 app.include_router(translate_router_r1)
 app.include_router(ocr_router_r1)
 
