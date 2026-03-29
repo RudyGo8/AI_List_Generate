@@ -35,122 +35,100 @@
 
 ## API 时序图
 
-### 1. 商品列表生成流程 (ailist)
+### 商品列表生成流程 (ailist)
+
+#### 异步模式（有回调地址）
 
 ```mermaid
+%%{init: {'sequence': {'mirrorActors': false}} }%%
 sequenceDiagram
     participant Client as 客户端
-    participant API as FastAPI<br/>/api/r1/shop/ailist
+    participant API as AI商品生成服务
     participant DB as MySQL数据库
-    participant Embedding as BGE嵌入服务<br/>(Docker)
-    participant LLM as Qwen LLM<br/>(通义千问)
-    participant Notice as 回调通知
+    participant LLM as Qwen LLM
+    participant Embedding as 嵌入模型
+    participant Notice as 回调服务
 
-    Note over Client,Notice: 1. 接收商品信息
-    Client->>API: POST /api/r1/shop/ailist<br/>(商品图片/URL, 站点, 语言等)
-    
-    Note over API,DB: 2. 存储原始商品数据
-    API->>DB: 创建 ProductSrcDetail 记录
-    API->>DB: 创建 DbProductTaskDetail 任务记录
-    
-    Note over API,Embedding: 3. AI 识别商品类目
-    API->>Embedding: 请求类目嵌入向量
-    Embedding-->>API: 返回嵌入向量
-    
-    Note over API,DB: 4. 从数据库获取候选类目
-    API->>DB: 查询站点类目列表
-    
-    Note over API,Embedding: 5. 类目相似度匹配
-    API->>Embedding: 批量获取类目嵌入向量
-    API->>Embedding: 计算余弦相似度
-    Embedding-->>API: 返回最相似的类目
-    
-    Note over API,LLM: 6. AI 生成商品标题
-    API->>LLM: 发送商品图片+提示词
-    LLM-->>API: 返回生成的标题
-    
-    Note over API,LLM: 7. AI 生成商品描述
-    API->>LLM: 发送商品图片+标题+类目
-    LLM-->>API: 返回生成的描述
-    
-    Note over API,LLM: 8. AI 生成商品属性
-    API->>LLM: 发送商品图片+描述+类目
-    LLM-->>API: 返回生成的属性
-    
-    Note over API,DB: 9. 存储生成结果
-    API->>DB: 创建 ProductDesDetail 记录
-    API->>DB: 更新任务状态为成功
-    
-    alt 有回调地址
-        Note over API,Notice: 10. 发送回调通知
-        API->>Notice: POST notice_url<br/>(生成的商品信息)
-        Notice-->>API: 回调响应
+    Client->>API: 1. 发起商品生成请求(图片、站点、notice_url)
+    activate API
+
+    alt 1.1 存在 product_url
+        API->>API: 获取商品基础信息
+        API-->>API: 返回商品标题/图片/详情
     end
-    
-    API-->>Client: 返回生成的商品信息
-```
 
-### 2. 文本翻译流程
+    API->>DB: 2. 写入源商品数据
+    activate DB
+    DB-->>API: 2.1 返回 src_id
+    deactivate DB
 
-```mermaid
-sequenceDiagram
-    participant Client as 客户端
-    participant API as FastAPI<br/>/api/r1/c/translate
-    participant DB as MySQL数据库
-    participant LLM as Qwen LLM<br/>(通义千问)
+    API->>DB: 3. 创建生成任务(status=processing)
+    activate DB
+    DB-->>API: 3.1 返回 task_id
+    deactivate DB
 
-    Client->>API: POST /api/r1/c/translate<br/>(原文, 目标语言)
-    
-    API->>DB: 获取 LLM 配置
-    API->>LLM: 发送翻译请求
-    
-    LLM-->>API: 返回翻译结果
-    
-    API-->>Client: 返回翻译内容
-```
+    API-->>Client: 4. 返回任务受理结果(task_id)
 
-### 3. OCR 图片识别流程
+    API->>LLM: 5. 识别候选类目(图片+标题)
+    activate LLM
+    LLM-->>API: 5.1 返回候选类目
+    deactivate LLM
 
-```mermaid
-sequenceDiagram
-    participant Client as 客户端
-    participant API as FastAPI<br/>/api/r1/c/ocr
-    participant LLM as Qwen VL<br/>(多模态模型)
+    API->>Embedding: 6. 生成候选类目嵌入向量
+    activate Embedding
+    Embedding-->>API: 6.1 返回候选类目向量
+    deactivate Embedding
 
-    Client->>API: POST /api/r1/c/ocr<br/>(图片URL列表)
-    
-    API->>LLM: 发送图片+OCR提示词
-    
-    LLM-->>API: 返回识别的文字
-    
-    API-->>Client: 返回文字列表
-```
+    API->>DB: 7. 查询站点类目列表
+    activate DB
+    DB-->>API: 7.1 返回 category_list
+    deactivate DB
 
-### 4. BGE 类目匹配详细流程
+    API->>Embedding: 8. 批量生成站点类目嵌入向量
+    activate Embedding
+    Embedding-->>API: 8.1 返回类目向量列表
+    deactivate Embedding
 
-```mermaid
-sequenceDiagram
-    participant Service as 商品生成服务
-    participant DB as MySQL数据库
-    participant BGE as BGE嵌入服务<br/>(Docker)
-    
-    Note over Service,DB: 获取查询文本的嵌入向量
-    Service->>BGE: get_embedding(query_text)
-    BGE-->>Service: query_embedding [1536维]
-    
-    Note over Service,DB: 获取候选类目列表
-    Service->>DB: SELECT category_path, category_id<br/>FROM category<br/>WHERE site=? AND enable=1
-    DB-->>Service: category_list
-    
-    Note over Service,BGE: 批量获取类目嵌入
-    Service->>BGE: batch_get_embeddings(category_paths)
-    BGE-->>Service: category_embeddings []
-    
-    Note over Service,Service: 计算余弦相似度
-    Service->>Service: for each category:<br/>similarity = cosine(query_emb, cat_emb)
-    Service->>Service: sort by similarity DESC
-    
-    Service-->>Service: 返回 top_k 相似类目
+    API->>API: 9. 计算余弦相似度并筛选 Top-K
+
+    API->>LLM: 10. 选择最佳类目(图片+Top-K类目)
+    activate LLM
+    LLM-->>API: 10.1 返回最终类目
+    deactivate LLM
+
+    API->>LLM: 11. 生成商品标题
+    activate LLM
+    LLM-->>API: 11.1 返回商品标题
+    deactivate LLM
+
+    API->>LLM: 12. 生成商品描述
+    activate LLM
+    LLM-->>API: 12.1 返回商品描述
+    deactivate LLM
+
+    API->>LLM: 13. 生成商品属性
+    activate LLM
+    LLM-->>API: 13.1 返回商品属性
+    deactivate LLM
+
+    API->>DB: 14. 保存生成结果
+    activate DB
+    DB-->>API: 14.1 保存成功
+    deactivate DB
+
+    API->>DB: 15. 更新任务状态(status=success)
+    activate DB
+    DB-->>API: 15.1 更新成功
+    deactivate DB
+
+    alt 16. 存在 notice_url
+        API->>Notice: 16.1 发送回调通知
+        activate Notice
+        Notice-->>API: 16.2 返回回调结果
+        deactivate Notice
+    end
+
+    deactivate API
 ```
 
 ---
@@ -231,5 +209,4 @@ python -m app.main
 ```
 
 服务将在 `http://localhost:1235` 启动
-
 
