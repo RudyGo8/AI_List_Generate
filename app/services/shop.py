@@ -1,4 +1,4 @@
-'''
+﻿'''
 @create_time: 2026/3/28 下午2:00
 @Author: GeChao
 @File: shop.py
@@ -10,168 +10,231 @@ from app.services.llm import chat_with_llm
 from app.utils.similar_utils import get_category_exchange
 
 
-def shop_product_category(site, spu_image_url, sku_image_url_list, product_title, category_name, db_instance):
+def _expand_prompt_keys(prompt_keys, scene='default'):
+    if isinstance(prompt_keys, str):
+        prompt_keys = [prompt_keys]
+
+    if not scene or scene == 'default':
+        return prompt_keys
+
+    expanded = []
+    for key in prompt_keys:
+        expanded.append(f"{key}__{scene.upper()}")
+        expanded.append(key)
+    return expanded
+
+
+def _get_prompt(db_instance, prompt_keys, default_value, scene='default'):
+    resolved_keys = _expand_prompt_keys(prompt_keys, scene=scene)
+
+    for key in resolved_keys:
+        prompt_obj = db_instance.query(SysAiPrompt).filter_by(
+            prompt_key=key,
+            enable=DataEnable.ON.value
+        ).first()
+        if prompt_obj and prompt_obj.prompt_value:
+            return prompt_obj.prompt_value
+
+    return default_value
+
+
+def _build_image_url_list(spu_image_url, sku_image_url_list):
+    image_url_list = [spu_image_url]
+    if sku_image_url_list and isinstance(sku_image_url_list, str):
+        image_url_list.extend([url for url in sku_image_url_list.split(',') if url])
+    return image_url_list
+
+
+def shop_product_category(site, spu_image_url, sku_image_url_list, product_title, category_name, db_instance, scene='default'):
     try:
-        system_obj = db_instance.query(SysAiPrompt).filter_by(
-            prompt_key='SYSTEM_COMMON_CATEGORY_STEP_ONE',
-            enable=DataEnable.ON.value).first()
+        system_step_one = _get_prompt(
+            db_instance,
+            'SYSTEM_COMMON_CATEGORY_STEP_ONE',
+            "You are an ecommerce category expert. Identify the best category path for this product.",
+            scene=scene
+        )
+        user_step_one_tpl = _get_prompt(
+            db_instance,
+            'USER_COMMON_CATEGORY_STEP_ONE',
+            "Product title: %s\nOriginal category: %s\n\nReturn a category path only.",
+            scene=scene
+        )
 
-        system_shop_product_category = system_obj.prompt_value if system_obj else ""
+        title = product_title or ""
+        cat = category_name or ""
+        try:
+            user_step_one = user_step_one_tpl % (title, cat)
+        except Exception:
+            user_step_one = f"Product title: {title}\nOriginal category: {cat}\nReturn a category path only."
 
-        user_obj = db_instance.query(SysAiPrompt).filter_by(
-            prompt_key='USER_COMMON_CATEGORY_STEP_ONE',
-            enable=DataEnable.ON.value).first()
+        image_url_list = _build_image_url_list(spu_image_url, sku_image_url_list)
+        category_path_by_ai, usage = chat_with_llm(
+            image_url_list=image_url_list,
+            user_prompt=user_step_one,
+            system_prompt=system_step_one,
+            task_type='shop_category',
+            scene=scene,
+        )
 
-        user_shop_product_category = user_obj.prompt_value if user_obj else "商品标题：%s\n原始类目：%s\n\n请根据图片和标题分析商品类型，给出最合适的类目路径。"
-
-        title = product_title if product_title else ""
-        cat = category_name if category_name else ""
-        user_shop_product_category = user_shop_product_category % (title, cat)
-
-        image_url_list = [spu_image_url]
-
-        '''one step category'''
-        category_path_by_ai, usage = chat_with_llm(image_url_list=image_url_list,
-                                                   user_prompt=user_shop_product_category,
-                                                   system_prompt=system_shop_product_category)
-
-        if category_path_by_ai is not None:
+        if category_path_by_ai:
             category_list = get_category_exchange(category_path_content=category_path_by_ai, site=site)
-
         else:
             category_list = [{"category_path": "General", "category_id": "DEFAULT"}]
 
-        system_obj2 = db_instance.query(SysAiPrompt).filter_by(
-            prompt_key='SYSTEM_COMMON_CATEGORY_STEP_TWO',
-            enable=DataEnable.ON.value).first()
-        system_shop_product_category = system_obj2.prompt_value if system_obj2 else "你是一个电商类目分析专家。从候选类目列表中选择最合适的类目。"
-        user_obj2 = db_instance.query(SysAiPrompt).filter_by(
-            prompt_key='USER_COMMON_CATEGORY_STEP_TWO',
-            enable=DataEnable.ON.value).first()
-        user_shop_product_category = user_obj2.prompt_value if user_obj2 else "商品标题：%s\n候选类目列表：%s\n\n请从以上候选类目中选择最合适的类目。"
+        system_step_two = _get_prompt(
+            db_instance,
+            'SYSTEM_COMMON_CATEGORY_STEP_TWO',
+            "You are an ecommerce category expert. Pick the best match from candidates.",
+            scene=scene
+        )
+        user_step_two_tpl = _get_prompt(
+            db_instance,
+            'USER_COMMON_CATEGORY_STEP_TWO',
+            "Product title: %s\nCandidate categories: %s\n\nReturn the best category path only.",
+            scene=scene
+        )
 
-        category_list_str = ""
-        if category_list:
-            for category in category_list:
-                if not category_list_str:
-                    category_list_str = category.get('category_path', '')
-                else:
-                    category_list_str = category_list_str + ', ' + category.get('category_path', '')
-
-        '''two step category'''
+        category_list_str = ", ".join([item.get('category_path', '') for item in category_list if item.get('category_path')])
         if category_list_str:
             try:
-                system_shop_product_category = system_shop_product_category % (title, category_list_str)
-            except:
-                system_shop_product_category = f"商品标题：{title}\n候选类目：{category_list_str}\n请选择最合适的类目。"
+                user_step_two = user_step_two_tpl % (title, category_list_str)
+            except Exception:
+                user_step_two = f"Product title: {title}\nCandidate categories: {category_list_str}\nReturn the best category path only."
 
-            category_path_by_ai, usage = chat_with_llm(image_url_list=image_url_list,
-                                                       user_prompt=user_shop_product_category,
-                                                       system_prompt=system_shop_product_category)
-            if category_path_by_ai is not None:
-                category_list = get_category_exchange(category_path_content=category_path_by_ai, site=site)
+            category_path_by_ai_step2, usage_step2 = chat_with_llm(
+                image_url_list=image_url_list,
+                user_prompt=user_step_two,
+                system_prompt=system_step_two,
+                task_type='shop_category',
+                scene=scene,
+            )
+            usage = usage_step2 if usage_step2 else usage
+            if category_path_by_ai_step2:
+                category_list = get_category_exchange(category_path_content=category_path_by_ai_step2, site=site)
 
         if not category_list:
             category_list = [{"category_path": "General", "category_id": "DEFAULT"}]
 
         logger.info(category_list)
-        if category_list and len(category_list) > 0:
-            return category_list[0], usage
-        else:
-            return {"category_path": "General", "category_id": "DEFAULT"}, usage
+        return category_list[0], usage
     except Exception as error:
         logger.error(error)
         return {"category_path": "General", "category_id": "DEFAULT"}, None
 
 
-def shop_product_title(spu_image_url, sku_image_url_list, product_title, category_name, des_lang_type, db_instance):
+def shop_product_title(spu_image_url, sku_image_url_list, product_title, category_name, des_lang_type, db_instance, scene='default'):
     try:
-        system_prompt_obj = db_instance.query(SysAiPrompt).filter_by(prompt_key='SYSTEM_SHOP_PRODUCT_TITLE',
-                                                                     enable=DataEnable.ON.value).first()
-        system_product_title = system_prompt_obj.prompt_value if system_prompt_obj else "你是一个Shop商品标题优化专家。根据商品图片和信息，生成符合Shop平台规范的优质商品标题。标题应该简洁、有吸引力，包含关键词。"
+        system_product_title = _get_prompt(
+            db_instance,
+            ['SYSTEM_SHOP_PRODUCT_TITLE', 'SYSTEM_TIKTOKSHOP_PRODUCT_TITLE'],
+            "You are an ecommerce title expert. Generate a concise and searchable product title.",
+            scene=scene
+        )
+        user_product_title_tpl = _get_prompt(
+            db_instance,
+            ['USER_SHOP_PRODUCT_TITLE', 'USER_TIKTOKSHOP_PRODUCT_TITLE'],
+            "Original title: %s\nCategory: %s\nLanguage: %s\n\nGenerate a product title.",
+            scene=scene
+        )
 
-        user_prompt_obj = db_instance.query(SysAiPrompt).filter_by(prompt_key='USER_SHOP_PRODUCT_TITLE',
-                                                                   enable=DataEnable.ON.value).first()
-        user_product_title = user_prompt_obj.prompt_value if user_prompt_obj else "商品原标题：%s\n商品类目：%s\n目标语言：%s\n\n请根据图片和商品信息生成Shop商品标题。"
-
-        # 处理 product_title 可能为 None 的情况
-        title = product_title if product_title else ""
-        cat = category_name if category_name else ""
-        lang = des_lang_type if des_lang_type else "English"
+        title = product_title or ""
+        cat = category_name or ""
+        lang = des_lang_type or "English"
 
         try:
-            user_product_title = user_product_title % (title, cat, lang)
-        except:
-            user_product_title = f"商品标题：{title}\n类目：{cat}\n语言：{lang}\n请生成标题。"
+            user_product_title = user_product_title_tpl % (title, cat, lang)
+        except Exception:
+            user_product_title = f"Original title: {title}\nCategory: {cat}\nLanguage: {lang}\nGenerate a product title."
 
-        image_url_list = [spu_image_url]
-        if sku_image_url_list and isinstance(sku_image_url_list, str):
-            image_url_list.extend(sku_image_url_list.split(','))
-
-        res, usage = chat_with_llm(image_url_list=image_url_list, user_prompt=user_product_title,
-                                   system_prompt=system_product_title)
+        image_url_list = _build_image_url_list(spu_image_url, sku_image_url_list)
+        res, usage = chat_with_llm(
+            image_url_list=image_url_list,
+            user_prompt=user_product_title,
+            system_prompt=system_product_title,
+            task_type='shop_title',
+            scene=scene,
+        )
         return (res if res else "Generated Title"), usage
     except Exception as error:
         logger.error(error)
         return None, None
 
 
-def shop_product_desc(spu_image_url, sku_image_url_list, product_title, category_name, des_lang_type, db_instance):
+def shop_product_desc(spu_image_url, sku_image_url_list, product_title, category_name, des_lang_type, db_instance, scene='default'):
     try:
-        system_prompt_obj = db_instance.query(SysAiPrompt).filter_by(prompt_key='SYSTEM_SHOP_PRODUCT_DESC',
-                                                                     enable=DataEnable.ON.value).first()
-        system_product_desc = system_prompt_obj.prompt_value if system_prompt_obj else "你是一个Shop商品描述撰写专家。根据商品图片和信息，生成详细、吸引人的商品描述，突出产品特点和卖点。"
+        system_product_desc = _get_prompt(
+            db_instance,
+            ['SYSTEM_SHOP_PRODUCT_DESC', 'SYSTEM_TIKTOKSHOP_PRODUCT_DESC'],
+            "You are an ecommerce copywriter. Generate a detailed and persuasive product description.",
+            scene=scene
+        )
+        user_product_desc_tpl = _get_prompt(
+            db_instance,
+            ['USER_SHOP_PRODUCT_DESC', 'USER_TIKTOKSHOP_PRODUCT_DESC'],
+            "Product title: %s\nCategory: %s\nLanguage: %s\n\nGenerate a product description.",
+            scene=scene
+        )
 
-        user_prompt_obj = db_instance.query(SysAiPrompt).filter_by(prompt_key='USER_SHOP_PRODUCT_DESC',
-                                                                   enable=DataEnable.ON.value).first()
-        user_product_desc = user_prompt_obj.prompt_value if user_prompt_obj else "商品标题：%s\n商品类目：%s\n目标语言：%s\n\n请根据图片和商品信息生成TikTokShop商品描述。"
-
-        title = product_title if product_title else ""
-        cat = category_name if category_name else ""
-        lang = des_lang_type if des_lang_type else "English"
+        title = product_title or ""
+        cat = category_name or ""
+        lang = des_lang_type or "English"
 
         try:
-            user_product_desc = user_product_desc % (title, cat, lang)
-        except:
-            user_product_desc = f"商品标题：{title}\n类目：{cat}\n语言：{lang}\n请生成描述。"
+            user_product_desc = user_product_desc_tpl % (title, cat, lang)
+        except Exception:
+            user_product_desc = f"Product title: {title}\nCategory: {cat}\nLanguage: {lang}\nGenerate a product description."
 
-        image_url_list = [spu_image_url]
-        if sku_image_url_list and isinstance(sku_image_url_list, str):
-            image_url_list.extend(sku_image_url_list.split(','))
-
-        res, usage = chat_with_llm(image_url_list=image_url_list, user_prompt=user_product_desc,
-                                   system_prompt=system_product_desc)
-        return res if res else "Generated Description", usage
+        image_url_list = _build_image_url_list(spu_image_url, sku_image_url_list)
+        res, usage = chat_with_llm(
+            image_url_list=image_url_list,
+            user_prompt=user_product_desc,
+            system_prompt=system_product_desc,
+            task_type='shop_desc',
+            scene=scene,
+        )
+        return (res if res else "Generated Description"), usage
     except Exception as error:
         logger.error(error)
         return None, None
 
 
 def shop_product_attributes(site, spu_image_url, sku_image_url_list, product_title,
-                            category_id, category_name, product_desc, attributes, des_lang_type, db_instance):
+                            category_id, category_name, product_desc, attributes, des_lang_type, db_instance, scene='default'):
     try:
-        system_obj = db_instance.query(SysAiPrompt).filter_by(
-            prompt_key='SYSTEM_TIKTOKSHOP_PRODUCT_ATTRIBUTE',
-            enable=DataEnable.ON.value).first()
-        system_product_attributes = system_obj.prompt_value if system_obj else "你是一个电商属性专家。根据商品信息生成符合平台要求的商品属性。"
+        system_product_attributes = _get_prompt(
+            db_instance,
+            ['SYSTEM_TIKTOKSHOP_PRODUCT_ATTRIBUTE', 'SYSTEM_SHOP_PRODUCT_ATTRIBUTE'],
+            "You are an ecommerce attribute expert. Generate structured product attributes.",
+            scene=scene
+        )
+        user_product_attributes_tpl = _get_prompt(
+            db_instance,
+            ['USER_TIKTOKSHOP_PRODUCT_ATTRIBUTE', 'USER_SHOP_PRODUCT_ATTRIBUTE'],
+            "Product title: %s\nCategory: %s\nDescription: %s\nOriginal attributes: %s\n\nGenerate attributes.",
+            scene=scene
+        )
 
-        user_obj = db_instance.query(SysAiPrompt).filter_by(
-            prompt_key='USER_TIKTOKSHOP_PRODUCT_ATTRIBUTE',
-            enable=DataEnable.ON.value).first()
-        user_product_attributes = user_obj.prompt_value if user_obj else "商品标题：%s\n商品类目：%s\n商品描述：%s\n原始属性：%s\n\n请生成商品属性。"
-
-        # 简化处理，不依赖数据库类目属性配置
         try:
-            user_product_attributes = user_product_attributes % (product_title or "", category_name or "", product_desc or "", str(attributes or ""))
-        except Exception as e:
-            user_product_attributes = f"商品标题：{product_title}\n商品类目：{category_name}\n请生成商品属性。"
+            user_product_attributes = user_product_attributes_tpl % (
+                product_title or "",
+                category_name or "",
+                product_desc or "",
+                str(attributes or "")
+            )
+        except Exception:
+            user_product_attributes = (
+                f"Product title: {product_title or ''}\nCategory: {category_name or ''}\n"
+                f"Description: {product_desc or ''}\nOriginal attributes: {str(attributes or '')}\nGenerate attributes."
+            )
 
-        image_url_list = [spu_image_url]
-        if sku_image_url_list and isinstance(sku_image_url_list, str):
-            image_url_list.extend(sku_image_url_list.split(','))
-
-        res, usage = chat_with_llm(image_url_list=image_url_list, user_prompt=user_product_attributes,
-                                   system_prompt=system_product_attributes)
+        image_url_list = _build_image_url_list(spu_image_url, sku_image_url_list)
+        res, usage = chat_with_llm(
+            image_url_list=image_url_list,
+            user_prompt=user_product_attributes,
+            system_prompt=system_product_attributes,
+            task_type='shop_attribute',
+            scene=scene,
+        )
         return res, usage
     except Exception as error:
         logger.error(error)

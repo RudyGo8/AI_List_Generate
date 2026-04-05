@@ -1,13 +1,13 @@
-'''
+﻿'''
 @create_time: 2026/3/28 上午11:10
 @Author: GeChao
 @File: tasks.py
 '''
 import datetime
 import time
+import json
 
-from fastapi import requests
-from pydantic import json
+import requests
 
 from app.config import logger
 from app.database import get_db_instance
@@ -19,6 +19,20 @@ from app.models.db_product_task_detail import DbProductTaskDetail
 from app.services.llm import get_model_used
 from app.services.shop import shop_product_category, shop_product_title, shop_product_desc, shop_product_attributes
 from app.utils.param_utils import list_url_to_str, usage_addition, list_to_str, filter_product_response, json_serial
+
+
+def _get_scene_from_custom_data(custom_data):
+    if not custom_data:
+        return 'default'
+
+    try:
+        payload = json.loads(custom_data) if isinstance(custom_data, str) else custom_data
+        if isinstance(payload, dict):
+            return payload.get('ai_scene', 'default')
+    except Exception:
+        return 'default'
+
+    return 'default'
 
 
 def set_product_src_to_db(clientId,
@@ -44,7 +58,7 @@ def set_product_src_to_db(clientId,
             product_title=product_title,
             category_id=category_id,
             category_name=category_name,
-            attributes=json.dumps(attributes, ensure_ascii=False),
+            attributes=json.dumps(attributes, ensure_ascii=False) if attributes is not None else None,
             create_user=clientId,
             update_user=clientId
         )
@@ -57,7 +71,7 @@ def set_product_src_to_db(clientId,
         new_gen_task = DbProductTaskDetail(
             gid=clientId,
             product_src_id=product_src_id,
-            platform_id=platform_id,
+            platform_id=platform_id if platform_id is not None else -1,
             notice_url=notice_url,
             site=site,
             tag_type=tag_type,
@@ -83,7 +97,7 @@ def set_product_des_to_db(clientId, site, platform_id, product_src_id, model_nam
                           tag_value, sales_attr_value_list, attr_value_list, duration, usage, remark, db_instance):
     """存储生成的商品数据到数据库"""
     try:
-        llm_model = get_model_used()
+        llm_model = get_model_used(task_type='shop_desc')
 
         new_product_des = ProductDesDetail(
             gid=clientId,
@@ -109,7 +123,12 @@ def set_product_des_to_db(clientId, site, platform_id, product_src_id, model_nam
         db_instance.refresh(new_product_des)
 
         if product_src_id:
-            existing_task = db_instance.query(DbProductTaskDetail).filter_by(product_src_id=product_src_id, platform_id=platform_id).first()
+            existing_task = db_instance.query(DbProductTaskDetail).filter_by(
+                product_src_id=product_src_id,
+                platform_id=platform_id,
+                gid=clientId,
+                site=site
+            ).first()
             if existing_task:
                 existing_task.product_des_id = new_product_des.id
                 existing_task.model_name = model_name if model_name else llm_model
@@ -131,48 +150,66 @@ def shop_product_generate_wrapper(task_record_id, batch_no):
         logger.info(f"task_record is None, Nothing to do")
         return True
     task_record = session_for_thread.query(DbProductTaskDetail).filter_by(id=task_record_id).first()
-    product_src = session_for_thread.query(ProductSrcDetail).filter_by(id=task_record.product_src_id, gid=task_record.gid).first()
+    if not task_record:
+        logger.info(f"task_record not found, task_record_id={task_record_id}")
+        session_for_thread.close()
+        return False
 
-    llm_model = get_model_used()
+    product_src = session_for_thread.query(ProductSrcDetail).filter_by(id=task_record.product_src_id, gid=task_record.gid).first()
+    if not product_src:
+        logger.info(f"product_src not found, task_record_id={task_record_id}, product_src_id={task_record.product_src_id}")
+        task_record.status = DataStatus.FAIL.value
+        session_for_thread.commit()
+        session_for_thread.close()
+        return False
+
+    scene = _get_scene_from_custom_data(task_record.custom_data)
+    llm_model = get_model_used(task_type='shop_desc', scene=scene)
 
     try:
+        task_record.status = DataStatus.PROCESSING.value
+        session_for_thread.commit()
+
         usage_total = None
         start_time = time.time()
-        '''1.ai generate category'''
+        '''1.大模型生成目录'''
         des_product_category, usage = shop_product_category(site=task_record.site,
                                                             spu_image_url=product_src.spu_image_url,
                                                             sku_image_url_list=product_src.sku_image_url_list,
                                                             product_title=product_src.product_title,
                                                             category_name=product_src.category_name,
-                                                            db_instance=session_for_thread)
+                                                            db_instance=session_for_thread,
+                                                            scene=scene)
         if des_product_category is None:
             des_product_category = {"category_path": "General", "category_id": "DEFAULT"}
         usage_total = usage_addition(usage_total, usage)
 
-        '''2.ai generate title'''
+        '''2.大模型生成标题'''
         des_product_title, usage = shop_product_title(spu_image_url=product_src.spu_image_url,
                                                       sku_image_url_list=product_src.sku_image_url_list,
                                                       product_title=product_src.product_title,
                                                       category_name=des_product_category.get('category_path', 'General'),
                                                       db_instance=session_for_thread,
-                                                      des_lang_type=task_record.des_lang_type)
+                                                      des_lang_type=task_record.des_lang_type,
+                                                      scene=scene)
 
         if des_product_title is None:
             des_product_title = "Generated Title"
         usage_total = usage_addition(usage_total, usage)
 
-        '''3.ai generate desc'''
+        '''3.大模型生成描述'''
         des_product_desc, usage = shop_product_desc(spu_image_url=product_src.spu_image_url,
                                                     sku_image_url_list=product_src.sku_image_url_list,
                                                     product_title=des_product_title,
                                                     category_name=des_product_category.get('category_path', 'General'),
                                                     db_instance=session_for_thread,
-                                                    des_lang_type=task_record.des_lang_type)
+                                                    des_lang_type=task_record.des_lang_type,
+                                                    scene=scene)
         if des_product_desc is None:
             des_product_desc = "Generated Description"
         usage_total = usage_addition(usage_total, usage)
 
-        '''4.ai generate attributes '''
+        '''4.大模型生成属性 '''
         des_product_attribute, usage = shop_product_attributes(site=task_record.site,
                                                                spu_image_url=product_src.spu_image_url,
                                                                sku_image_url_list=product_src.sku_image_url_list,
@@ -182,7 +219,8 @@ def shop_product_generate_wrapper(task_record_id, batch_no):
                                                                product_desc=des_product_desc,
                                                                attributes=product_src.attributes,
                                                                db_instance=session_for_thread,
-                                                               des_lang_type=task_record.des_lang_type)
+                                                               des_lang_type=task_record.des_lang_type,
+                                                               scene=scene)
 
         if des_product_attribute is None:
             des_product_attribute = "{}"
@@ -191,7 +229,7 @@ def shop_product_generate_wrapper(task_record_id, batch_no):
         end_time = time.time()
         duration = end_time - start_time
 
-        '''5.save to db'''
+        '''5.保存数据库'''
         title_to_save = str(des_product_title)[:250] if des_product_title else "Product"
         desc_to_save = str(des_product_desc)[:5000] if des_product_desc else "Description"
         attr_to_save = str(des_product_attribute)[:5000] if des_product_attribute else "{}"
@@ -212,13 +250,13 @@ def shop_product_generate_wrapper(task_record_id, batch_no):
         if not res:
             return False
 
-        '''6.send notice'''
+        '''6.任务通知'''
         if task_record.notice_url:
             notice_content = product_des.to_dict()
             res = notice_wrapper(gid=task_record.gid, task_type=BatchType.PRODUCT_GENERATE.value,
                                  biz_id=product_des.id, notice_content=notice_content, batch_no=batch_no,
                                  notice_url=task_record.notice_url, custom_data=task_record.custom_data,
-                                 db_instance=session_for_thread)
+                                 db_instance=session_for_thread, task_id=task_record.id)
             if not res:
                 logger.info(f'create notice record error! product_des_id = {product_des.id}')
 
@@ -228,15 +266,20 @@ def shop_product_generate_wrapper(task_record_id, batch_no):
         return True
 
     except Exception as e:
-        logger.info(f"Error processing task ID={product_src.id}: {e}")
+        logger.info(f"Error processing task ID={task_record_id}: {e}")
         session_for_thread.rollback()
+        try:
+            task_record.status = DataStatus.FAIL.value
+            session_for_thread.commit()
+        except Exception:
+            session_for_thread.rollback()
         return False
     finally:
         session_for_thread.close()
 
 
 def notice_wrapper(gid, task_type, biz_id, notice_content, batch_no, notice_url, db_instance, custom_data=None,
-                   notice_id=None):
+                   notice_id=None, task_id=None):
     if notice_id:
         record = db_instance.query(DbNoticeDetail).filter_by(id=notice_id).first()
         if not record:
@@ -267,12 +310,12 @@ def notice_wrapper(gid, task_type, biz_id, notice_content, batch_no, notice_url,
             'Content-Type': 'application/json'
         }
         notice_content = json.loads(record.notice_content)
-        notice_content['task_id'] = record.id
+        notice_content['task_id'] = notice_content.get('task_id') or task_id
         notice_content['custom_data'] = record.custom_data
         notice_content = filter_product_response(notice_content)
         response = requests.post(record.notice_url, headers=headers, json=notice_content)
     except Exception as error:
-        record.remark = error
+        record.remark = str(error)
         response = None
 
     if response and response.status_code == 200:
@@ -292,6 +335,8 @@ def notice_wrapper(gid, task_type, biz_id, notice_content, batch_no, notice_url,
 
 
 def get_next_notice_time(notice_counts, next_notice_time):
+    if next_notice_time is None:
+        next_notice_time = datetime.datetime.now()
     additional_seconds = 2 ** notice_counts * 60
     next_notice_time = next_notice_time + datetime.timedelta(seconds=additional_seconds)
     return next_notice_time
@@ -315,6 +360,6 @@ def get_product_des_by_task(task_id):
         return task_record.status, None, None
     except Exception as error:
         logger.error(error)
-        return DataStatus.FAIL.value, None
+        return DataStatus.FAIL.value, None, None
     finally:
         db_instance.close()

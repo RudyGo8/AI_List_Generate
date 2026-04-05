@@ -1,4 +1,4 @@
-'''
+﻿'''
 @create_time: 2026/3/27 下午2:05
 @Author: GeChao
 @File: qwen_utils.py
@@ -7,16 +7,20 @@ from openai import OpenAI
 
 from app.database import get_db_instance
 from app.models.db_sys_conf import SysConf
-from app.models.constants import DataEnable, LLMType
+from app.models.constants import DataEnable
 
 ''' 调用qwen模型 '''
 
 
-def ai_chat_qwen(image_url_list, user_prompt, system_prompt=None) -> (str, dict):
+def ai_chat_qwen(image_url_list, user_prompt, system_prompt=None, model_override=None) -> (str, dict):
+    db = None
     try:
         db = next(get_db_instance())
 
-        ai_model_qwen = db.query(SysConf).filter_by(key='AI_MODEL_QWEN', enable=DataEnable.ON.value).first().value
+        ai_model_qwen = model_override or db.query(SysConf).filter_by(
+            key='AI_MODEL_QWEN',
+            enable=DataEnable.ON.value
+        ).first().value
         ai_base_url_qwen = db.query(SysConf).filter_by(key='AI_BASE_URL_QWEN', enable=DataEnable.ON.value).first().value
         ai_api_key_qwen = db.query(SysConf).filter_by(key='AI_APIKEY_QWEN', enable=DataEnable.ON.value).first().value
 
@@ -59,4 +63,5 @@ def ai_chat_qwen(image_url_list, user_prompt, system_prompt=None) -> (str, dict)
         return None, None
 
     finally:
-        db.close()
+        if db:
+            db.close()

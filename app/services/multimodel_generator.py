@@ -1,4 +1,4 @@
-'''
+﻿'''
 @create_time: 2026/3/27 下午4:44
 @Author: GeChao
 @File: multimodel_generator.py
@@ -10,23 +10,41 @@ from app.models.constants import DataEnable
 from app.services.llm import chat_with_llm
 
 
-def common_image_ocr(image_url_list):
+def _get_ocr_prompt(db_instance, scene='default'):
+    prompt_keys = ['SYSTEM_IMAGE_OCR']
+    if scene and scene != 'default':
+        prompt_keys = [f"SYSTEM_IMAGE_OCR__{scene.upper()}"] + prompt_keys
+
+    for key in prompt_keys:
+        prompt_record = db_instance.query(SysAiPrompt).filter_by(
+            prompt_key=key,
+            enable=DataEnable.ON.value
+        ).first()
+        if prompt_record and prompt_record.prompt_value:
+            return prompt_record.prompt_value
+
+    return None
+
+
+def common_image_ocr(image_url_list, scene='default'):
     logger.info(f"OCR called with {len(image_url_list) if image_url_list else 0} images")
     db_instance = next(get_db_instance())
     try:
-        prompt_record = db_instance.query(SysAiPrompt).filter_by(
-            prompt_key='SYSTEM_IMAGE_OCR',
-            enable=DataEnable.ON.value).first()
+        system_image_ocr = _get_ocr_prompt(db_instance, scene=scene)
 
-        if not prompt_record:
+        if not system_image_ocr:
             logger.error("OCR prompt not found in database: SYSTEM_IMAGE_OCR")
             return None, None
-        system_image_ocr = prompt_record.prompt_value
         logger.info(f"Using OCR prompt: {system_image_ocr}")
 
         logger.info(f"Calling chat_with_llm with image_url_list: {image_url_list}")
-        res, usage = chat_with_llm(image_url_list=image_url_list, user_prompt='',
-                                   system_prompt=system_image_ocr)
+        res, usage = chat_with_llm(
+            image_url_list=image_url_list,
+            user_prompt='',
+            system_prompt=system_image_ocr,
+            task_type='ocr',
+            scene=scene,
+        )
         logger.info(f"chat_with_llm returned: res={type(res)}, usage={usage}")
 
         if res is None:

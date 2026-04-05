@@ -1,11 +1,11 @@
-'''
+﻿'''
 @create_time: 2026/3/28 下午2:06
 @Author: GeChao
 @File: similar_utils.py
 '''
 from app.database import get_db_instance
 from app.models.db_category import Category
-from app.utils.embedding_utils import find_similar_categories
+from app.services.category_matcher import rank_categories_hybrid
 
 
 def get_category_exchange(category_path_content, platform_id=None, site='shop_test'):
@@ -27,7 +27,7 @@ def get_category_exchange(category_path_content, platform_id=None, site='shop_te
             for cat in all_categories
         ]
 
-        similar_categories = find_similar_categories(
+        similar_categories = rank_categories_hybrid(
             query_text=category_path_content,
             category_list=category_list,
             top_k=3

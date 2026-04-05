@@ -5,18 +5,19 @@
 '''
 import json
 import logging
+import os
 from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler
 
-# mysql 配置
-MYSQL_USERNAME = "root"
-MYSQL_PASSWORD = "123456"
-MYSQL_HOST = "localhost"
-MYSQL_PORT = 3306
-MYSQL_DATABASE = "ai_list"
+# MySQL settings
+MYSQL_USERNAME = os.getenv("MYSQL_USERNAME", "root")
+MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "123456")
+MYSQL_HOST = os.getenv("MYSQL_HOST", "localhost")
+MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
+MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "ai_list")
 
-# 日志路径
-LOG_PATH = './logs'
+# Logging path
+LOG_PATH = os.getenv("LOG_PATH", "./logs")
 
 
 def json_formatter(record):
@@ -30,7 +31,6 @@ def json_formatter(record):
         "funcName": record.funcName,
         "lineno": record.lineno
     }
-    # 将 ensure_ascii 设置为 False
     return json.dumps(log_record, ensure_ascii=False)
 
 
@@ -44,29 +44,31 @@ class JsonLogFormatter(logging.Formatter):
 
 def setup_logging(log_file_path=None):
     """Set up logging for the application."""
+    root_logger = logging.getLogger()
+    if getattr(root_logger, "_ai_list_logging_configured", False):
+        return
+
+    os.makedirs(LOG_PATH, exist_ok=True)
+
     if log_file_path is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_file_path = "%s/ai_image_api_%s.log" % (LOG_PATH, timestamp)
+        log_file_path = f"{LOG_PATH}/ai_image_api_{timestamp}.log"
 
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
+    root_logger.setLevel(logging.INFO)
 
-    # Create a JSON formatter
-    json_formatter = JsonLogFormatter()
+    json_log_formatter = JsonLogFormatter()
 
-    # File handler to write logs to a file daily
     file_handler = TimedRotatingFileHandler(log_file_path, when='midnight', interval=1, backupCount=5)
     file_handler.setLevel(logging.INFO)
-    file_handler.setFormatter(json_formatter)
+    file_handler.setFormatter(json_log_formatter)
 
-    # Stream handler to write logs to the console
     stream_handler = logging.StreamHandler()
     stream_handler.setLevel(logging.INFO)
-    stream_handler.setFormatter(json_formatter)
+    stream_handler.setFormatter(json_log_formatter)
 
-    # Add handlers to the root logger
-    logger.addHandler(file_handler)
-    logger.addHandler(stream_handler)
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(stream_handler)
+    root_logger._ai_list_logging_configured = True
 
 
 setup_logging()
@@ -79,5 +81,4 @@ if __name__ == '__main__':
     test_logger.info("This is a test log message.")
     test_logger.error("This is an error log message.")
 
-    print("日志已写入test_log.log")
-
+    print("日志已写入 test_log.log")

@@ -9,6 +9,7 @@ from typing import Optional, List, Dict, Any
 
 class ListGenerateRequest(BaseModel):
     site: str = Field(None, description="Site ID")
+    platform_id: Optional[int] = Field(-1, description="Platform ID")
     notice_url: Optional[HttpUrl] = Field(None, description="Notice URL")
     product_url: Optional[HttpUrl] = Field(None, description="Product URL")
     spu_image_url: Optional[HttpUrl] = Field(None, description="SPU Image URL")

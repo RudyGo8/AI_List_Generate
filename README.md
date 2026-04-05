@@ -1,4 +1,4 @@
-# AI 商品列表生成服务
+﻿# AI 商品列表生成服务
 
 ## 项目介绍
 
@@ -198,15 +198,48 @@ INSERT INTO sys_conf (`key`, `value`, `enable`) VALUES
 
 1. 安装依赖：
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
 
 2. 配置数据库连接（修改 `app/config.py`）
 
 3. 启动服务：
 ```bash
-python -m app.main
+uv run uvicorn app.main:app --reload
 ```
 
 服务将在 `http://localhost:1235` 启动
 
+
+## AI 路由与评测（新增）
+
+### 1. 按任务路由模型
+
+系统支持通过 `db_ai_model_route` 按 `task_type + scene` 选择模型。请求可通过 Header 传入：
+
+- `x-ai-scene: default`（默认）
+
+已接入任务类型：
+
+- `shop_category`
+- `shop_title`
+- `shop_desc`
+- `shop_attribute`
+- `translate`
+- `batch_translate`
+- `ocr`
+
+### 2. 离线评测脚手架
+
+评测脚本：`app/eval/run_eval.py`
+
+示例：
+
+```bash
+uv run python app/eval/run_eval.py --base-url http://localhost:1235 --scene default
+```
+
+评测数据：
+
+- `app/eval/datasets/translate_eval.jsonl`
+- `app/eval/datasets/ocr_eval.jsonl`

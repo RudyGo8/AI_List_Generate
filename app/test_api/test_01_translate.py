@@ -1,5 +1,5 @@
-"""
-测试接口：POST /api/r/c/translate
+﻿"""
+测试接口：POST /api/r1/c/translate
 功能：文本翻译
 
 业务流程：

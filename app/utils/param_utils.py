@@ -10,8 +10,7 @@ import ast
 
 def extract_list(text):
     """
-    Extract JSON list from the given text.
-    'The translation result is: ["Hello","World","China"] Done!' ->  ["Hello","World","China"]
+    抽取json字段
     """
     try:
         pattern = r'\[\s*(".*?")\s*(,\s*".*?")*\s*\]'
@@ -39,10 +38,14 @@ def list_url_to_str(list_data):
 
 
 def usage_addition(usage_one, usage_two):
+    if not usage_one and not usage_two:
+        return None
     if not usage_one:
         return usage_two
+    if not usage_two:
+        return usage_one
     result = {}
-    for key in usage_one:
+    for key in set(usage_one.keys()) | set(usage_two.keys()):
         values_one = usage_one.get(key, 0)
         values_two = usage_two.get(key, 0)
         values_one = values_one if values_one else 0
@@ -66,13 +69,13 @@ def list_to_str(list_data):
 def filter_product_response(response_content: dict = None):
     if not response_content:
         return None
-    resp = response_content
-    del resp['id']
-    del resp['product_src_id']
-    del resp['version']
-    del resp['create_time']
-    del resp['create_user']
-    del resp['update_user']
+    resp = dict(response_content)
+    resp.pop('id', None)
+    resp.pop('product_src_id', None)
+    resp.pop('version', None)
+    resp.pop('create_time', None)
+    resp.pop('create_user', None)
+    resp.pop('update_user', None)
     return resp
 
 

@@ -11,7 +11,7 @@ from app.models.constants import DataEnable
 
 
 def get_embedding(text: str) -> List[float]:
-    """get """
+    """转为向量 """
     db = next(get_db_instance())
     try:
         embedding_api_key = db.query(SysConf).filter_by(key='EMBEDDING_API_KEY', enable=DataEnable.ON.value).first().value
@@ -38,7 +38,7 @@ def get_embedding(text: str) -> List[float]:
 
 
 def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
-    """calculate cosine similarity between two vectors"""
+    """计算相似度"""
     vec1 = np.array(vec1)
     vec2 = np.array(vec2)
     dot_product = np.dot(vec1, vec2)
@@ -50,7 +50,7 @@ def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
 
 
 def batch_get_embeddings(texts: List[str]) -> List[List[float]]:
-    """batch get embedding"""
+    """匹配向量"""
     db = next(get_db_instance())
     try:
         embedding_api_key = db.query(SysConf).filter_by(key='EMBEDDING_API_KEY', enable=DataEnable.ON.value).first().value
@@ -77,7 +77,7 @@ def batch_get_embeddings(texts: List[str]) -> List[List[float]]:
 
 
 def find_similar_categories(query_text: str, category_list: List[Dict[str, Any]], top_k: int = 3) -> List[Dict[str, Any]]:
-    """Find similar categories for the given query text and category list"""
+    """找到相似目录"""
     if not category_list:
         return []
 

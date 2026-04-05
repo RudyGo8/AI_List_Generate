@@ -1,11 +1,11 @@
-'''
+﻿'''
 @create_time: 2026/3/28 上午10:27
 @Author: GeChao
 @File: ailist.py
 '''
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, BackgroundTasks
 from fastapi import Request
-from pydantic import json
+import json
 
 from app.schemas.common import CommonResponse
 from app.services.tasks import set_product_src_to_db, shop_product_generate_wrapper, get_product_des_by_task
@@ -22,11 +22,33 @@ router_r1 = APIRouter(
 )
 
 
+def _merge_scene_to_custom_data(custom_data, scene):
+    if not scene or scene == 'default':
+        return custom_data
+
+    payload = {}
+    if custom_data:
+        try:
+            if isinstance(custom_data, str):
+                payload = json.loads(custom_data)
+            elif isinstance(custom_data, dict):
+                payload = custom_data
+            else:
+                payload = {"raw_custom_data": str(custom_data)}
+        except Exception:
+            payload = {"raw_custom_data": str(custom_data)}
+
+    payload['ai_scene'] = scene
+    return json.dumps(payload, ensure_ascii=False)
+
+
 @router_r1.post("/ailist")
-async def routes_shop_ailist(request: Request, list_generate_req: ListGenerateRequest):
+async def routes_shop_ailist(request: Request, list_generate_req: ListGenerateRequest, background_tasks: BackgroundTasks):
 
     clientId = (request.headers.get('accesskey'))
+    ai_scene = request.headers.get('x-ai-scene', 'default')
     site = list_generate_req.site
+    platform_id = list_generate_req.platform_id
     notice_url = list_generate_req.notice_url
     tag_type = list_generate_req.tag_type
     des_lang_type = list_generate_req.des_lang_type
@@ -34,6 +56,8 @@ async def routes_shop_ailist(request: Request, list_generate_req: ListGenerateRe
     product_url = list_generate_req.product_url
     if product_url:
         product_data = get_product(product_url=product_url)
+        if not product_data:
+            return fail_api("get product data fail!")
         spu_image_url = product_data.get('spu_image_url', None)
         sku_image_url_list = product_data.get('sku_image_url_list', None)
         product_title = product_data.get('product_title', None)
@@ -50,12 +74,15 @@ async def routes_shop_ailist(request: Request, list_generate_req: ListGenerateRe
         attributes = list_generate_req.attributes
         custom_data = list_generate_req.custom_data
 
+    custom_data = _merge_scene_to_custom_data(custom_data, ai_scene)
+
     if not spu_image_url:
         return fail_api("spu_image_url must be provided!")
     if not site:
         return fail_api("site must be provided!")
 
     res, task_id = set_product_src_to_db(clientId=clientId,
+                                         platform_id=platform_id,
                                          site=site,
                                          spu_image_url=spu_image_url, notice_url=notice_url,
                                          sku_image_url_list=sku_image_url_list,
@@ -67,6 +94,7 @@ async def routes_shop_ailist(request: Request, list_generate_req: ListGenerateRe
     if res:
         ret_data = {'task_id': task_id}
         if notice_url:
+            background_tasks.add_task(shop_product_generate_wrapper, task_id, None)
             return CommonResponse(success=True, msg='task created success', data=ret_data)
         else:
             res = shop_product_generate_wrapper(task_record_id=task_id, batch_no=None)
@@ -79,9 +107,9 @@ async def routes_shop_ailist(request: Request, list_generate_req: ListGenerateRe
                 notice_content["status"] = task_status
                 notice_content["task_id"] = task_id
 
-                return CommonResponse(success=True, msg='success', data=notice_content, usage=json.loads(usage))
+                usage_dict = json.loads(usage) if usage else None
+                return CommonResponse(success=True, msg='success', data=notice_content, usage=usage_dict)
             return CommonResponse(success=False, msg='fail')
 
     else:
         return CommonResponse(success=False, msg='task create fail')
-

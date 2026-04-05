@@ -1,4 +1,4 @@
-'''
+﻿'''
 @create_time: 2026/3/27 下午1:13
 @Author: GeChao
 @File: translate.py
@@ -21,11 +21,12 @@ router_r1 = APIRouter(
 @router_r1.post("/translate")
 async def route_text_translate(request: Request, translate_req: TranslateRequest) -> JSONResponse:
     clientId = (request.headers.get('accesskey'))
+    scene = request.headers.get('x-ai-scene', 'default')
 
     des_lang_type = translate_req.des_lang_type
     content = translate_req.content
 
-    ret_data, usage = service_text_translate(des_lang_type, content)
+    ret_data, usage = service_text_translate(des_lang_type, content, scene=scene)
 
     if ret_data is None:
         return JSONResponse(content={"success": False, "msg": "Translation failed", "data": {}, "usage": usage})
@@ -38,10 +39,12 @@ async def route_text_translate(request: Request, translate_req: TranslateRequest
 async def route_batch_text_translate(request: Request, batch_translate_req: BatchTranslateRequest) -> JSONResponse:
     from app.config import logger
     clientId = (request.headers.get('accesskey'))
+    scene = request.headers.get('x-ai-scene', 'default')
+
     des_lang_type = batch_translate_req.des_lang_type.upper()
     content_list = batch_translate_req.content_list
 
-    ret_data, usage = service_batch_text_translate(des_lang_type=des_lang_type, content_list=content_list)
+    ret_data, usage = service_batch_text_translate(des_lang_type=des_lang_type, content_list=content_list, scene=scene)
     logger.info(f"batch_translate result: ret_data={ret_data}, usage={usage}")
 
     if not ret_data:

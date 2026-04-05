@@ -14,7 +14,7 @@ pymysql.install_as_MySQLdb()
 # 构建数据库连接URL
 SQLALCHEMY_DATABASE_URL = f"mysql://{MYSQL_USERNAME}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}?charset=utf8mb4"
 
-# 创建引擎(连接池)
+# 创建引擎(连接池)cmd
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,  # 数据库连接URL
     echo=False,
