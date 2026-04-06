@@ -1,4 +1,4 @@
-﻿'''
+'''
 @create_time: 2026/3/28 上午11:10
 @Author: GeChao
 @File: tasks.py
@@ -242,6 +242,7 @@ def shop_product_generate_wrapper(task_record_id, batch_no):
                                                  sku_image_url_list=product_src.sku_image_url_list,
                                                  category_name=des_product_category.get("category_path", "General"),
                                                  category_id=des_product_category.get("category_id", "DEFAULT"),
+                                                 tag_value=None,
                                                  sales_attr_value_list=None,
                                                  attr_value_list=attr_to_save, duration=duration,
                                                  usage=usage_total,
@@ -346,20 +347,20 @@ def get_product_des_by_task(task_id):
     db_instance = next(get_db_instance())
 
     if not task_id:
-        return DataStatus.FAIL.value, None, None
+        return DataStatus.FAIL.value, None, None, None
 
     try:
         task_record = db_instance.query(DbProductTaskDetail).filter_by(id=task_id).first()
         if not task_record:
-            return DataStatus.FAIL.value, None, None
+            return DataStatus.FAIL.value, None, None, None
 
         if task_record.status == DataStatus.SUCCESS.value:
             product_des_record = db_instance.query(ProductDesDetail).filter_by(id=task_record.product_des_id).first()
-            return task_record.status, product_des_record, task_record.usage
+            return task_record.status, product_des_record, task_record.usage, task_record.model_name
 
-        return task_record.status, None, None
+        return task_record.status, None, None, task_record.model_name
     except Exception as error:
         logger.error(error)
-        return DataStatus.FAIL.value, None, None
+        return DataStatus.FAIL.value, None, None, None
     finally:
         db_instance.close()

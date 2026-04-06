@@ -1,15 +1,30 @@
-'''
+﻿'''
 @create_time: 2026/3/25 下午7:38
 @Author: GeChao
 @File: main.py
 '''
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from app.routes.common.translate import router_r1 as translate_router_r1
 from app.routes.common.ocr import router_r1 as ocr_router_r1
 from app.routes.shop.ailist import router_r1 as shop_router_r1
 from app.config import logger
 
 app = FastAPI()
+
+# Frontend debug support: allow local Vite dev servers.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        'http://localhost:4173',
+        'http://127.0.0.1:4173'
+    ],
+    allow_credentials=True,
+    allow_methods=['*'],
+    allow_headers=['*']
+)
 
 
 @app.middleware('http')
@@ -18,6 +33,7 @@ async def log_request(request: Request, call_next):
     response = await call_next(request)
     logger.info(f"Response: {response.status_code} {request.url}")
     return response
+
 
 app.include_router(shop_router_r1)
 app.include_router(translate_router_r1)

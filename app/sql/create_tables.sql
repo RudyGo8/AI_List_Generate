@@ -239,35 +239,20 @@ CREATE TABLE IF NOT EXISTS db_notice_detail (
     INDEX idx_nd_create_time (create_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='通知详情表';
 
--- 插入初始配置数据
 
--- AI 模型配置（使用通义千问）
-INSERT INTO db_sys_conf (`key`, `value`, enable, remark) VALUES
-('LLM_TYPE', 'QWEN', 1, '当前使用的AI模型：QWEN或GEMINI'),
-('AI_MODEL_QWEN', 'qwen-vl-max-latest', 1, '通义千问模型名称'),
-('AI_BASE_URL_QWEN', 'https://dashscope.aliyuncs.com/compatible-mode/v1', 1, '通义千问API地址'),
-('AI_APIKEY_QWEN', 'YOUR_QWEN_API_KEY_HERE', 1, '通义千问API密钥');
-
--- 测试客户端配置
-INSERT INTO db_sys_client_conf (client_name, api_key, api_secret, enable, remark) VALUES
-('test_client', 'test_key', 'test_secret_123456', 1, '测试客户端'),
-('batch', 'batch', 'batch_secret', 1, '批处理客户端');
-
--- 基础提示词模板
-INSERT INTO db_sys_ai_prompt (prompt_key, prompt_value, enable, remark) VALUES
-('SYSTEM_TEXT_TRANSLATE', '你是一个专业的翻译专家，精通多国语言翻译。请将用户提供的文本翻译成指定语言，保持原文的语气和风格。', 1, '文本翻译系统提示词'),
-('USER_TEXT_TRANSLATE', '请将以下文本翻译成%s语言，只返回翻译结果，不要添加任何解释：\n%s', 1, '文本翻译用户提示词'),
-('SYSTEM_BATCH_TEXT_TRANSLATE', '你是一个专业的翻译专家，精通多国语言翻译。请将用户提供的文本列表翻译成指定语言，返回JSON格式的翻译结果列表。', 1, '批量翻译系统提示词'),
-('USER_BATCH_TEXT_TRANSLATE', '请将以下文本列表翻译成%s语言，返回JSON数组格式，保持原文的语气和风格：\n%s', 1, '批量翻译用户提示词'),
-('SYSTEM_IMAGE_OCR', '你是一个专业的OCR文字识别专家。请识别图片中的所有文字内容，按顺序输出文字，保持原有格式。', 1, '图片OCR系统提示词'),
-('SYSTEM_COMMON_CATEGORY_STEP_ONE', '你是一个电商类目分析专家。根据商品图片和标题，分析商品类型并给出合适的类目路径。', 1, '类目分析第一步系统提示词'),
-('USER_COMMON_CATEGORY_STEP_ONE', '商品标题：%s\n原始类目：%s\n\n请根据图片和标题分析商品类型，给出最合适的类目路径。', 1, '类目分析第一步用户提示词'),
-('SYSTEM_COMMON_CATEGORY_STEP_TWO', '你是一个电商类目分析专家。从候选类目列表中选择最合适的类目。', 1, '类目分析第二步系统提示词'),
-('USER_COMMON_CATEGORY_STEP_TWO', '商品标题：%s\n候选类目列表：%s\n\n请从以上候选类目中选择最合适的类目。', 1, '类目分析第二步用户提示词'),
-('SYSTEM_TIKTOKSHOP_PRODUCT_TITLE', '你是一个TikTokShop商品标题优化专家。根据商品图片和信息，生成符合TikTokShop平台规范的优质商品标题。标题应该简洁、有吸引力，包含关键词。', 1, 'TikTokShop标题生成系统提示词'),
-('USER_TIKTOKSHOP_PRODUCT_TITLE', '商品原标题：%s\n商品类目：%s\n目标语言：%s\n\n请根据图片和商品信息生成TikTokShop商品标题。', 1, 'TikTokShop标题生成用户提示词'),
-('SYSTEM_TIKTOKSHOP_PRODUCT_DESC', '你是一个TikTokShop商品描述撰写专家。根据商品图片和信息，生成详细、吸引人的商品描述，突出产品特点和卖点。', 1, 'TikTokShop描述生成系统提示词'),
-('USER_TIKTOKSHOP_PRODUCT_DESC', '商品标题：%s\n商品类目：%s\n目标语言：%s\n\n请根据图片和商品信息生成TikTokShop商品描述。', 1, 'TikTokShop描述生成用户提示词');
-
--- 创建完成提示
-SELECT '数据库和表创建完成！请继续下一步：在 db_sys_conf 表中更新 AI_APIKEY_QWEN 为你的真实通义千问API密钥' AS message;
+-- 11.1 站点类目表（用于embedding匹配）
+CREATE TABLE IF NOT EXISTS db_category (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+    site VARCHAR(64) NOT NULL COMMENT '站点标识，如 shopee_vn, tiktok_id',
+    category_path VARCHAR(512) NOT NULL COMMENT '类目路径，如 电子 > 手机',
+    category_id VARCHAR(64) NOT NULL COMMENT '平台类目ID',
+    parent_id VARCHAR(64) DEFAULT NULL COMMENT '父类目ID',
+    level INT NOT NULL DEFAULT 1 COMMENT '类目层级',
+    enable INT NOT NULL DEFAULT 1 COMMENT '0停用,1启用',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    create_user VARCHAR(128) NOT NULL DEFAULT 'system' COMMENT '创建人',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
+    update_user VARCHAR(128) DEFAULT 'system' COMMENT '修改人',
+    INDEX idx_site (site),
+    UNIQUE INDEX idx_category_id (site, category_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='站点类目表';

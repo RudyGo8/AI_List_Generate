@@ -23,3 +23,9 @@ export function createShopTask(payload) {
     body: payload
   })
 }
+
+export function getShopTask(taskId) {
+  return request(`/api/r1/shop/ailist/task/${taskId}`, {
+    method: 'GET'
+  })
+}

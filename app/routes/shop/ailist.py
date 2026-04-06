@@ -14,6 +14,7 @@ from app.schemas.list import ListGenerateRequest
 from app.utils.get_data_utils import get_product
 from app.utils.param_utils import filter_product_response
 from app.utils.response_utils import fail_api
+from app.models.constants import DataStatus
 
 router_r1 = APIRouter(
     prefix="/api/r1/shop",
@@ -91,25 +92,38 @@ async def routes_shop_ailist(request: Request, list_generate_req: ListGenerateRe
                                          attributes=attributes,
                                          tag_type=tag_type, custom_data=custom_data, des_lang_type=des_lang_type)
 
-    if res:
-        ret_data = {'task_id': task_id}
-        if notice_url:
-            background_tasks.add_task(shop_product_generate_wrapper, task_id, None)
-            return CommonResponse(success=True, msg='task created success', data=ret_data)
-        else:
-            res = shop_product_generate_wrapper(task_record_id=task_id, batch_no=None)
-            if res:
-                task_status, product_des_record, usage = get_product_des_by_task(task_id=task_id)
-                if product_des_record:
-                    notice_content = filter_product_response(response_content=product_des_record.to_dict())
-                else:
-                    notice_content = {}
-                notice_content["status"] = task_status
-                notice_content["task_id"] = task_id
-
-                usage_dict = json.loads(usage) if usage else None
-                return CommonResponse(success=True, msg='success', data=notice_content, usage=usage_dict)
-            return CommonResponse(success=False, msg='fail')
-
-    else:
+    if not res:
         return CommonResponse(success=False, msg='task create fail')
+
+    # Always run async to keep API response fast.
+    background_tasks.add_task(shop_product_generate_wrapper, task_id, None)
+    ret_data = {
+        'task_id': task_id,
+        'status': DataStatus.READY.value,
+        'polling_url': f'/api/r1/shop/ailist/task/{task_id}'
+    }
+    return CommonResponse(success=True, msg='task created success', data=ret_data)
+
+
+@router_r1.get("/ailist/task/{task_id}")
+async def routes_shop_ailist_task(task_id: int):
+    task_status, product_des_record, usage, model_name = get_product_des_by_task(task_id=task_id)
+
+    data = {
+        "task_id": task_id,
+        "status": task_status,
+        "model_name": model_name
+    }
+
+    if product_des_record:
+        data.update(filter_product_response(response_content=product_des_record.to_dict()) or {})
+
+    usage_dict = json.loads(usage) if usage else None
+
+    if task_status == DataStatus.FAIL.value:
+        return CommonResponse(success=False, msg='task failed', data=data, usage=usage_dict)
+
+    if task_status in (DataStatus.READY.value, DataStatus.PROCESSING.value):
+        return CommonResponse(success=True, msg='task processing', data=data, usage=usage_dict)
+
+    return CommonResponse(success=True, msg='success', data=data, usage=usage_dict)

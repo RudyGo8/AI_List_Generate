@@ -7,7 +7,7 @@
 ### 核心功能
 
 1. **AI 商品列表生成** (`/api/r1/shop/ailist`)
-   - 通过商品图片识别商品类目（基于 BGE-M3 多语言嵌入向量相似度匹配）
+   - 基于图片+标题进行类目推理，并通过 hybrid（向量+关键词）匹配站点类目
    - AI 生成商品标题（多语言支持）
    - AI 生成商品描述（多语言支持）
    - AI 生成商品属性
@@ -24,14 +24,90 @@
 
 - **Web 框架**: FastAPI
 - **数据库**: MySQL (SQLAlchemy ORM)
-- **AI 模型**: 
-  - **BGE-M3** (BAAI General Embedding M3) - 用于商品类目多语言嵌入匹配
+- **AI 模型**:
+  - **Embedding 模型（可选）** - 用于类目语义匹配（未配置时自动降级到关键词匹配）
   - Qwen (通义千问) - 用于商品标题、描述、属性生成
   - Gemini - 备用 LLM
 - **API 调用**: OpenAI SDK (兼容 OpenAI 格式)
 
 
-**---**
+---
+
+## 项目流程思维导图（场景化）
+
+### 1) 流程梳理（文字版）
+
+- 项目名称：`ai_list_generate`
+- 项目目标：面向电商上架场景，提供 AI 商品信息生成、文本翻译、图片 OCR，并对商品生成任务做状态追踪与结果落库。
+- 参与角色：用户/调用方、前端、FastAPI 后端、MySQL、LLM/多模态第三方接口、可选回调服务。
+- 流程范围：从用户提交请求到同步返回结果或异步回调完成。
+
+主流程步骤：
+
+1. 客户端发起 API 请求（翻译/批量翻译/OCR/商品生成）。
+2. 后端进行鉴权与参数校验，不通过则直接返回错误。
+3. 根据接口类型进入对应业务流程。
+4. 翻译与 OCR：调用模型后直接返回结果与 usage。
+5. 商品生成：先写源商品与任务，再执行类目识别、标题生成、描述生成、属性生成。
+6. 类目识别优先走 embedding + 关键词混合匹配；embedding 不可用时自动降级关键词匹配。
+7. 保存生成结果并更新任务状态（SUCCESS/FAIL）。
+8. 有 `notice_url` 时异步回调，无 `notice_url` 时同步返回最终生成内容。
+
+### 2) 标准流程图（Mermaid）
+
+```mermaid
+flowchart TD
+    A([开始]) --> B[客户端调用 API]
+    B --> C{鉴权是否通过?}
+    C -- 否 --> C1[返回 401/失败响应] --> Z([结束])
+    C -- 是 --> D{参数是否有效?}
+    D -- 否 --> D1[返回 4xx/失败响应] --> Z
+    D -- 是 --> E{接口类型?}
+
+    E -- translate --> T1[读取提示词并调用 LLM 翻译]
+    T1 --> T2[返回 translated_content + usage]
+    T2 --> Z
+
+    E -- batchtranslate --> BT1[批量翻译并组装列表结果]
+    BT1 --> BT2[返回 translated_content_list + usage]
+    BT2 --> Z
+
+    E -- ocr --> O1[调用多模态 OCR 识别图片文字]
+    O1 --> O2[返回 word_list + usage]
+    O2 --> Z
+
+    E -- shop/ailist --> S1[写入源商品数据与任务记录]
+    S1 --> S2{任务创建成功?}
+    S2 -- 否 --> S2N[返回 task create fail] --> Z
+    S2 -- 是 --> S3[任务置为 PROCESSING]
+
+    S3 --> S4[类目阶段-第1轮: LLM 产出类目文本]
+    S4 --> S5{第1轮 Embedding 可用?}
+    S5 -- 是 --> S6[第1轮 Hybrid 匹配: 向量+关键词, 召回 Top3]
+    S5 -- 否 --> S7[第1轮降级: 仅关键词匹配, 召回 Top3]
+    S6 --> S8
+    S7 --> S8
+
+    S8[类目阶段-第2轮: LLM 基于 Top3 再推理类目文本] --> S9{第2轮 Embedding 可用?}
+    S9 -- 是 --> S10[第2轮 Hybrid 匹配并排序, 取 Top1 作为最终类目]
+    S9 -- 否 --> S11[第2轮降级: 仅关键词匹配并排序, 取 Top1]
+    S10 --> S12
+    S11 --> S12
+
+    S12[生成阶段: 标题/描述/属性] --> S13[写入生成结果表]
+    S13 --> S14{保存是否成功?}
+    S14 -- 否 --> S14N[任务置 FAIL, 返回 fail] --> Z
+    S14 -- 是 --> S15[任务置 SUCCESS]
+
+    S15 --> S16{是否有 notice_url?}
+    S16 -- 是 --> S17[异步回调通知结果] --> S18[返回 task_id/成功]
+    S16 -- 否 --> S19[同步返回生成结果 + usage]
+    S17 --> Z
+    S18 --> Z
+    S19 --> Z
+```
+
+---
 
 ## API 时序图
 
@@ -62,7 +138,7 @@ sequenceDiagram
     DB-->>API: 2.1 返回 src_id
     deactivate DB
 
-    API->>DB: 3. 创建生成任务(status=processing)
+    API->>DB: 3. 创建生成任务(status=ready)
     activate DB
     DB-->>API: 3.1 返回 task_id
     deactivate DB
@@ -74,20 +150,28 @@ sequenceDiagram
     LLM-->>API: 5.1 返回候选类目
     deactivate LLM
 
-    API->>Embedding: 6. 生成候选类目嵌入向量
-    activate Embedding
-    Embedding-->>API: 6.1 返回候选类目向量
-    deactivate Embedding
+    alt 6. Embedding 可用
+        API->>Embedding: 6.1 生成候选类目嵌入向量
+        activate Embedding
+        Embedding-->>API: 6.2 返回候选类目向量
+        deactivate Embedding
+    else 6. Embedding 不可用
+        API->>API: 6.1 降级为关键词匹配
+    end
 
     API->>DB: 7. 查询站点类目列表
     activate DB
     DB-->>API: 7.1 返回 category_list
     deactivate DB
 
-    API->>Embedding: 8. 批量生成站点类目嵌入向量
-    activate Embedding
-    Embedding-->>API: 8.1 返回类目向量列表
-    deactivate Embedding
+    alt 8. Embedding 可用
+        API->>Embedding: 8.1 批量生成站点类目嵌入向量
+        activate Embedding
+        Embedding-->>API: 8.2 返回类目向量列表
+        deactivate Embedding
+    else 8. Embedding 不可用
+        API->>API: 8.1 保持关键词匹配路径
+    end
 
     API->>API: 9. 计算余弦相似度并筛选 Top-K
 
@@ -95,6 +179,15 @@ sequenceDiagram
     activate LLM
     LLM-->>API: 10.1 返回最终类目
     deactivate LLM
+
+    alt 10.2 Embedding 可用
+        API->>Embedding: 10.2.1 最终类目向量匹配并取 Top1
+        activate Embedding
+        Embedding-->>API: 10.2.2 返回最终类目
+        deactivate Embedding
+    else 10.2 Embedding 不可用
+        API->>API: 10.2.1 关键词匹配并取 Top1
+    end
 
     API->>LLM: 11. 生成商品标题
     activate LLM
@@ -135,9 +228,9 @@ sequenceDiagram
 
 ## BGE 模型 Docker 部署
 
-本项目使用 **BGE-M3 (BAAI General Embedding M3)** 多语言嵌入模型进行商品类目匹配，通过嵌入向量相似度计算，将 AI 识别的类目路径与数据库中的目标站点类目进行智能匹配。
+本项目可使用 embedding 模型进行商品类目语义匹配；若 embedding 未配置或不可用，系统会自动降级为关键词匹配，不阻断主流程。
 
-> **BGE-M3** 特点：支持超过100种语言的稠密嵌入、稀疏嵌入和混合检索，是当前性能最优的开源嵌入模型之一。
+> 说明：当前代码通过 `db_sys_conf` 读取 `EMBEDDING_*` 配置。
 
 ### 部署方式
 
@@ -151,7 +244,7 @@ docker run --gpus all -p 8000:80 -v "%cd%\data:/data" ghcr.io/huggingface/text-e
 
 ### 2. 配置存储在数据库
 
-所有配置存储在 MySQL 数据库的 `sys_conf` 表中，系统启动时自动读取：
+所有配置存储在 MySQL 数据库的 `db_sys_conf` 表中，系统启动时自动读取：
 
 | key | 说明 | 示例值 |
 |-----|------|--------|
@@ -162,23 +255,13 @@ docker run --gpus all -p 8000:80 -v "%cd%\data:/data" ghcr.io/huggingface/text-e
 配置示例（插入数据库）：
 
 ```sql
-INSERT INTO sys_conf (`key`, `value`, `enable`) VALUES 
+INSERT INTO db_sys_conf (`key`, `value`, `enable`) VALUES
 ('EMBEDDING_API_KEY', 'dummy', 1),
 ('EMBEDDING_BASE_URL', 'http://192.168.1.100:8080/v1', 1),
 ('EMBEDDING_MODEL', 'BAAI/bge-m3', 1);
 ```
 
 > 应用会在调用嵌入服务时从数据库动态读取这些配置，修改配置后无需重启服务。
-
-
-```
-
-配置数据库（sys_conf 表）：
-| key | value |
-|-----|-------|
-| EMBEDDING_BASE_URL | http://localhost:11434/v1 |
-| EMBEDDING_API_KEY | ollama |
-| EMBEDDING_MODEL | BAAI/bge-m3 |
 
 ---
 
@@ -188,9 +271,9 @@ INSERT INTO sys_conf (`key`, `value`, `enable`) VALUES
 |--------|------|--------|
 | MYSQL_HOST | MySQL 主机 | localhost |
 | MYSQL_PORT | MySQL 端口 | 3306 |
-| MYSQL_USERNAME | MySQL 用户名 | xx |
-| MYSQL_PASSWORD | MySQL 密码 | xx |
-| MYSQL_DATABASE | 数据库名 | xx |
+| MYSQL_USERNAME | MySQL 用户名 | root |
+| MYSQL_PASSWORD | MySQL 密码 | 123456 |
+| MYSQL_DATABASE | 数据库名 | ai_list |
 
 ---
 
@@ -198,14 +281,15 @@ INSERT INTO sys_conf (`key`, `value`, `enable`) VALUES
 
 1. 安装依赖：
 ```bash
+uv venv .venv
 uv sync
 ```
 
-2. 配置数据库连接（修改 `app/config.py`）
+2. 配置数据库连接（推荐使用环境变量）
 
 3. 启动服务：
 ```bash
-uv run uvicorn app.main:app --reload
+uv run uvicorn app.main:app --host 0.0.0.0 --port 1235 --reload
 ```
 
 服务将在 `http://localhost:1235` 启动
@@ -243,3 +327,16 @@ uv run python app/eval/run_eval.py --base-url http://localhost:1235 --scene defa
 
 - `app/eval/datasets/translate_eval.jsonl`
 - `app/eval/datasets/ocr_eval.jsonl`
+
+### 企业评测命令（推荐）
+
+```bash
+uv run python app/eval/run_eval.py --base-url http://localhost:1235 --scene default --compare-scene promo --min-success-rate 0.95 --out app/eval/reports/report_ab.json
+```
+
+输出包含：
+- success_rate / valid_output_rate
+- avg/p50/p95/p99 延迟
+- token 统计
+- 错误分类（auth/validation/server/timeout/connection）
+- 双场景差异（delta）
