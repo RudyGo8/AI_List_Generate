@@ -66,7 +66,6 @@ def chat_with_llm(image_url_list, user_prompt, system_prompt=None, task_type='ge
                 model_override=route_conf.get('model_name')
             )
 
-        # fallback: default to qwen-compatible endpoint
         return ai_chat_qwen(
             image_url_list=image_url_list,
             user_prompt=user_prompt,

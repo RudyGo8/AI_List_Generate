@@ -67,6 +67,7 @@ def _build_category_cache_key(site, scene, product_title, spu_image_url, categor
 
 def shop_product_category(site, spu_image_url, sku_image_url_list, product_title, category_name, db_instance, scene='default'):
     try:
+        # redis 缓存
         cache_key = _build_category_cache_key(site, scene, product_title, spu_image_url, category_name)
         cache_hit = get_json(cache_key)
         if cache_hit and isinstance(cache_hit, dict):
@@ -74,6 +75,7 @@ def shop_product_category(site, spu_image_url, sku_image_url_list, product_title
             return cache_hit, None
         logger.info(f"category_cache_miss key={cache_key}")
 
+        # 第一步类目推理（多模态）
         system_step_one = _get_prompt(
             db_instance,
             'SYSTEM_COMMON_CATEGORY_STEP_ONE',
@@ -108,6 +110,7 @@ def shop_product_category(site, spu_image_url, sku_image_url_list, product_title
         else:
             category_list = [{"category_path": "General", "category_id": "DEFAULT"}]
 
+        # 第二步类目重排（文本）
         system_step_two = _get_prompt(
             db_instance,
             'SYSTEM_COMMON_CATEGORY_STEP_TWO',
@@ -299,10 +302,7 @@ def _extract_json_payload(raw_text):
 
 
 def shop_product_bundle_text_only(product_title, category_name, attributes, des_lang_type, db_instance, scene='default'):
-    """
-    One-call generation for title/description/attributes.
-    Text-only by design to reduce latency and image-token cost.
-    """
+
     try:
         system_prompt = _get_prompt(
             db_instance,

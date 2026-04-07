@@ -65,8 +65,8 @@ def get_embedding(text: str) -> List[float]:
         db.close()
 
 
+# 相似度计算
 def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
-    """Compute cosine similarity."""
     arr1 = np.array(vec1)
     arr2 = np.array(vec2)
     dot_product = np.dot(arr1, arr2)
@@ -77,8 +77,8 @@ def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
     return float(dot_product / (norm1 * norm2))
 
 
+# 向量库
 def batch_get_embeddings(texts: List[str]) -> List[List[float]]:
-    """Generate embedding vectors in batch with per-text cache."""
     if not texts:
         return []
 

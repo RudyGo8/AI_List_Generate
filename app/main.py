@@ -12,7 +12,6 @@ from app.config import logger
 
 app = FastAPI()
 
-# Frontend debug support: allow local Vite dev servers.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[

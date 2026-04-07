@@ -3,6 +3,7 @@
 from app.utils.embedding_utils import get_embedding, batch_get_embeddings, cosine_similarity
 
 
+# 关键词重叠度
 def _keyword_overlap_score(query: str, text: str) -> float:
     q_terms = set((query or '').lower().replace('>', ' ').split())
     t_terms = set((text or '').lower().replace('>', ' ').split())
@@ -11,11 +12,8 @@ def _keyword_overlap_score(query: str, text: str) -> float:
     return len(q_terms & t_terms) / max(len(q_terms), 1)
 
 
+# 类目混合排序，返回top3
 def rank_categories_hybrid(query_text: str, category_list: List[Dict], top_k: int = 3) -> List[Dict]:
-    """
-    Hybrid rank: embedding similarity + lexical overlap.
-    Returns top_k categories with score fields.
-    """
     if not category_list:
         return []
 

@@ -48,7 +48,7 @@ def set_product_src_to_db(clientId,
                           tag_type,
                           custom_data,
                           des_lang_type):
-    """瀛樺偍鍘熷鍟嗗搧鏁版嵁鍒版暟鎹簱"""
+
     db_instance = next(get_db_instance())
     try:
         new_product_src = ProductSrcDetail(
@@ -95,7 +95,6 @@ def set_product_src_to_db(clientId,
 def set_product_des_to_db(clientId, site, platform_id, product_src_id, model_name,
                           product_title, product_desc, spu_image_url, sku_image_url_list, category_name, category_id,
                           tag_value, sales_attr_value_list, attr_value_list, duration, usage, remark, db_instance):
-    """Store generated product data into database."""
     try:
         llm_model = get_model_used(task_type='shop_desc')
 
@@ -172,7 +171,7 @@ def shop_product_generate_wrapper(task_record_id, batch_no):
 
         usage_total = None
         start_time = time.time()
-        # 1) generate category
+        # 生成类目
         des_product_category, usage = shop_product_category(site=task_record.site,
                                                             spu_image_url=product_src.spu_image_url,
                                                             sku_image_url_list=product_src.sku_image_url_list,
@@ -184,7 +183,7 @@ def shop_product_generate_wrapper(task_record_id, batch_no):
             des_product_category = {"category_path": "General", "category_id": "DEFAULT"}
         usage_total = usage_addition(usage_total, usage)
 
-        # 2) generate title/description/attributes in one text-only call
+        # 生成标题、描述、属性
         bundle_result, usage = shop_product_bundle_text_only(
             product_title=product_src.product_title,
             category_name=des_product_category.get('category_path', 'General'),
@@ -204,7 +203,7 @@ def shop_product_generate_wrapper(task_record_id, batch_no):
         end_time = time.time()
         duration = end_time - start_time
 
-        # 5) persist generated data
+        # 数据清理落库
         title_to_save = str(des_product_title)[:250] if des_product_title else "Product"
         desc_to_save = str(des_product_desc)[:5000] if des_product_desc else "Description"
         attr_to_save = str(des_product_attribute)[:5000] if des_product_attribute else "{}"
@@ -221,12 +220,12 @@ def shop_product_generate_wrapper(task_record_id, batch_no):
                                                  sales_attr_value_list=None,
                                                  attr_value_list=attr_to_save, duration=duration,
                                                  usage=usage_total,
-                                                 remark=f"鐢?{llm_model} 鐢熸垚",
+                                                 remark=f"{llm_model} ",
                                                  db_instance=session_for_thread)
         if not res:
             return False
 
-        # 6) optional callback notification
+        # 回调通知
         if task_record.notice_url:
             notice_content = product_des.to_dict()
             res = notice_wrapper(gid=task_record.gid, task_type=BatchType.PRODUCT_GENERATE.value,

@@ -23,6 +23,7 @@ router_r1 = APIRouter(
 )
 
 
+# 场景标记
 def _merge_scene_to_custom_data(custom_data, scene):
     if not scene or scene == 'default':
         return custom_data
@@ -45,7 +46,6 @@ def _merge_scene_to_custom_data(custom_data, scene):
 
 @router_r1.post("/ailist")
 async def routes_shop_ailist(request: Request, list_generate_req: ListGenerateRequest, background_tasks: BackgroundTasks):
-
     clientId = (request.headers.get('accesskey'))
     ai_scene = request.headers.get('x-ai-scene', 'default')
     site = list_generate_req.site
@@ -95,7 +95,7 @@ async def routes_shop_ailist(request: Request, list_generate_req: ListGenerateRe
     if not res:
         return CommonResponse(success=False, msg='task create fail')
 
-    # Always run async to keep API response fast.
+    # 异步执行
     background_tasks.add_task(shop_product_generate_wrapper, task_id, None)
     ret_data = {
         'task_id': task_id,

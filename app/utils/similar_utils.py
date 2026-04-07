@@ -8,10 +8,8 @@ from app.models.db_category import Category
 from app.services.category_matcher import rank_categories_hybrid
 
 
+# Hybrid检索-向量+关键词
 def get_category_exchange(category_path_content, platform_id=None, site='shop_test'):
-
-    """Get similar categories for the given category path content"""
-
     db = next(get_db_instance())
     try:
         all_categories = db.query(Category).filter(
