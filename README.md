@@ -76,44 +76,7 @@ flowchart TD
 
 ## 2. 主流程图（商品生成）
 
-```mermaid
-flowchart TD
-    A([Start]) --> B[POST /api/r1/shop/ailist]
-    B --> C{Has product_url}
-    C -- Yes --> C1[Fetch source data by get_product]
-    C -- No --> C2[Use manual fields]
-    C1 --> D
-    C2 --> D
-
-    D{Input valid}
-    D -- No --> D1[Return error response] --> Z([End])
-    D -- Yes --> E[Save source and task READY]
-    E --> F[Return task_id and polling_url]
-    F --> G[Run background task]
-
-    G --> H[Set task PROCESSING]
-    H --> I{Category cache hit}
-    I -- Yes --> I1[Use cached category]
-    I -- No --> J[Step1 multimodal category infer]
-    J --> K[Hybrid retrieve top3]
-    K --> L[Step2 text rerank]
-    L --> M[Hybrid pick top1]
-    M --> N[Write category cache]
-    I1 --> O
-    N --> O
-
-    O[One LLM call for title desc attrs] --> P[Save product result]
-    P --> Q{Save success}
-    Q -- No --> Q1[Set task FAIL] --> Z
-    Q -- Yes --> R[Set task SUCCESS]
-    R --> S{Has notice_url}
-    S -- Yes --> T[Async callback]
-    S -- No --> U[Frontend polls task result]
-    T --> Z
-    U --> Z
-```
-
----
+![ai_list_generate_flowchart_standard](./images/README/ai_list_generate_flowchart_standard.png)
 
 ## 3. 时序图（异步任务 + 轮询）
 
