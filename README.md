@@ -1,342 +1,219 @@
-﻿# AI 商品列表生成服务
+﻿# AI Listing Generate
 
-## 项目介绍
+这个项目核心是在做一件事：把“电商商品上架文案与类目整理”自动化，减少人工编辑和跨平台适配成本。
 
-本项目是一个基于 FastAPI 的 AI 辅助电商商品上架接口服务，旨在帮助卖家在多平台上架商品时，自动生成符合各平台要求的商品信息。
+解决的问题
 
-### 核心功能
+1.不同站点类目体系不一致，人工选类目容易错。
 
-1. **AI 商品列表生成** (`/api/r1/shop/ailist`)
-   - 基于图片+标题进行类目推理，并通过 hybrid（向量+关键词）匹配站点类目
-   - AI 生成商品标题（多语言支持）
-   - AI 生成商品描述（多语言支持）
-   - AI 生成商品属性
+2.卖家上架商品时，标题/描述/属性生成很耗时，且质量不稳定。
 
-2. **文本翻译** (`/api/r1/c/translate`, `/api/r1/c/batchtranslate`)
-   - 单文本翻译
-   - 批量文本翻译
-   - 多语言支持
+3.多语言翻译和图片 OCR 是高频辅助动作，手工处理效率低。
 
-3. **图片 OCR 识别** (`/api/r1/c/ocr`)
-   - 从商品图片中提取文字信息
-
-### 技术栈
-
-- **Web 框架**: FastAPI
-- **数据库**: MySQL (SQLAlchemy ORM)
-- **AI 模型**:
-  - **Embedding 模型（可选）** - 用于类目语义匹配（未配置时自动降级到关键词匹配）
-  - Qwen (通义千问) - 用于商品标题、描述、属性生成
-  - Gemini - 备用 LLM
-- **API 调用**: OpenAI SDK (兼容 OpenAI 格式)
-
+4.需要可追踪任务（同步返回或异步回调），便于系统集成。
 
 ---
 
-## 项目流程思维导图（场景化）
+## 技术栈
 
-### 1) 流程梳理（文字版）
+- 后端：FastAPI
+- 前端：Vue3 + Vite
+- 数据库：MySQL（SQLAlchemy）
+- 缓存：Redis（类目缓存、Embedding 缓存）
+- 大模型：Qwen（通过兼容 OpenAI 接口调用）
+- 向量能力：Embedding API（本地或远端）
+- 包与环境：uv / Python 3.11+
 
-- 项目名称：`ai_list_generate`
-- 项目目标：面向电商上架场景，提供 AI 商品信息生成、文本翻译、图片 OCR，并对商品生成任务做状态追踪与结果落库。
-- 参与角色：用户/调用方、前端、FastAPI 后端、MySQL、LLM/多模态第三方接口、可选回调服务。
-- 流程范围：从用户提交请求到同步返回结果或异步回调完成。
+---
 
-主流程步骤：
-
-1. 客户端发起 API 请求（翻译/批量翻译/OCR/商品生成）。
-2. 后端进行鉴权与参数校验，不通过则直接返回错误。
-3. 根据接口类型进入对应业务流程。
-4. 翻译与 OCR：调用模型后直接返回结果与 usage。
-5. 商品生成：先写源商品与任务，再执行类目识别、标题生成、描述生成、属性生成。
-6. 类目识别优先走 embedding + 关键词混合匹配；embedding 不可用时自动降级关键词匹配。
-7. 保存生成结果并更新任务状态（SUCCESS/FAIL）。
-8. 有 `notice_url` 时异步回调，无 `notice_url` 时同步返回最终生成内容。
-
-### 2) 标准流程图（Mermaid）
+## 1. 项目架构图
 
 ```mermaid
 flowchart TD
-    A([开始]) --> B[客户端调用 API]
-    B --> C{鉴权是否通过?}
-    C -- 否 --> C1[返回 401/失败响应] --> Z([结束])
-    C -- 是 --> D{参数是否有效?}
-    D -- 否 --> D1[返回 4xx/失败响应] --> Z
-    D -- 是 --> E{接口类型?}
+    U[前端 Vue3]
+    U -->|HTTP API| G[FastAPI 网关 app/main.py]
 
-    E -- translate --> T1[读取提示词并调用 LLM 翻译]
-    T1 --> T2[返回 translated_content + usage]
-    T2 --> Z
+    subgraph API[接口层 app/routes]
+      R1[shop/ailist]
+      R2[translate]
+      R3[ocr]
+    end
 
-    E -- batchtranslate --> BT1[批量翻译并组装列表结果]
-    BT1 --> BT2[返回 translated_content_list + usage]
-    BT2 --> Z
+    G --> API
 
-    E -- ocr --> O1[调用多模态 OCR 识别图片文字]
-    O1 --> O2[返回 word_list + usage]
-    O2 --> Z
+    subgraph SVC[服务层 app/services]
+      S1[tasks.py 任务编排]
+      S2[shop.py 商品生成流程]
+      S3[llm.py 模型路由]
+      S4[category_matcher.py Hybrid排序]
+    end
 
-    E -- shop/ailist --> S1[写入源商品数据与任务记录]
-    S1 --> S2{任务创建成功?}
-    S2 -- 否 --> S2N[返回 task create fail] --> Z
-    S2 -- 是 --> S3[任务置为 PROCESSING]
+    API --> SVC
 
-    S3 --> S4[类目阶段-第1轮: LLM 产出类目文本]
-    S4 --> S5{第1轮 Embedding 可用?}
-    S5 -- 是 --> S6[第1轮 Hybrid 匹配: 向量+关键词, 召回 Top3]
-    S5 -- 否 --> S7[第1轮降级: 仅关键词匹配, 召回 Top3]
-    S6 --> S8
-    S7 --> S8
+    subgraph UTIL[工具层 app/utils]
+      U1[qwen_utils.py]
+      U2[embedding_utils.py]
+      U3[cache_utils.py Redis缓存]
+      U4[similar_utils.py 类目检索]
+    end
 
-    S8[类目阶段-第2轮: LLM 基于 Top3 再推理类目文本] --> S9{第2轮 Embedding 可用?}
-    S9 -- 是 --> S10[第2轮 Hybrid 匹配并排序, 取 Top1 作为最终类目]
-    S9 -- 否 --> S11[第2轮降级: 仅关键词匹配并排序, 取 Top1]
-    S10 --> S12
-    S11 --> S12
+    SVC --> UTIL
 
-    S12[生成阶段: 标题/描述/属性] --> S13[写入生成结果表]
-    S13 --> S14{保存是否成功?}
-    S14 -- 否 --> S14N[任务置 FAIL, 返回 fail] --> Z
-    S14 -- 是 --> S15[任务置 SUCCESS]
+    DB[(MySQL)]
+    RC[(Redis)]
+    LLM[[Qwen / 兼容OpenAI]]
+    EMB[[Embedding API]]
 
-    S15 --> S16{是否有 notice_url?}
-    S16 -- 是 --> S17[异步回调通知结果] --> S18[返回 task_id/成功]
-    S16 -- 否 --> S19[同步返回生成结果 + usage]
-    S17 --> Z
-    S18 --> Z
-    S19 --> Z
+    SVC --> UTIL
+    SVC --> DB
+    UTIL --> DB
+    UTIL --> RC
+    UTIL --> LLM
+    UTIL --> EMB
 ```
 
 ---
 
-## API 时序图
-
-### 商品列表生成流程 (ailist)
-
-#### 异步模式（有回调地址）
+## 2. 主流程图（商品生成）
 
 ```mermaid
-%%{init: {'sequence': {'mirrorActors': false}} }%%
+flowchart TD
+    A([Start]) --> B[POST /api/r1/shop/ailist]
+    B --> C{Has product_url}
+    C -- Yes --> C1[Fetch source data by get_product]
+    C -- No --> C2[Use manual fields]
+    C1 --> D
+    C2 --> D
+
+    D{Input valid}
+    D -- No --> D1[Return error response] --> Z([End])
+    D -- Yes --> E[Save source and task READY]
+    E --> F[Return task_id and polling_url]
+    F --> G[Run background task]
+
+    G --> H[Set task PROCESSING]
+    H --> I{Category cache hit}
+    I -- Yes --> I1[Use cached category]
+    I -- No --> J[Step1 multimodal category infer]
+    J --> K[Hybrid retrieve top3]
+    K --> L[Step2 text rerank]
+    L --> M[Hybrid pick top1]
+    M --> N[Write category cache]
+    I1 --> O
+    N --> O
+
+    O[One LLM call for title desc attrs] --> P[Save product result]
+    P --> Q{Save success}
+    Q -- No --> Q1[Set task FAIL] --> Z
+    Q -- Yes --> R[Set task SUCCESS]
+    R --> S{Has notice_url}
+    S -- Yes --> T[Async callback]
+    S -- No --> U[Frontend polls task result]
+    T --> Z
+    U --> Z
+```
+
+---
+
+## 3. 时序图（异步任务 + 轮询）
+
+```mermaid
 sequenceDiagram
-    participant Client as 客户端
-    participant API as AI商品生成服务
-    participant DB as MySQL数据库
-    participant LLM as Qwen LLM
-    participant Embedding as 嵌入模型
-    participant Notice as 回调服务
+    participant FE as Frontend
+    participant API as FastAPI
+    participant DB as MySQL
+    participant REDIS as Redis
+    participant LLM as LLM
+    participant EMB as Embedding
 
-    Client->>API: 1. 发起商品生成请求(图片、站点、notice_url)
-    activate API
+    FE->>API: POST /shop/ailist
+    API->>DB: Save source and create task
+    API-->>FE: task_id and polling_url
 
-    alt 1.1 存在 product_url
-        API->>API: 获取商品基础信息
-        API-->>API: 返回商品标题/图片/详情
+    loop Polling
+      FE->>API: GET /shop/ailist/task/{task_id}
+      API-->>FE: READY/PROCESSING/SUCCESS/FAIL
     end
 
-    API->>DB: 2. 写入源商品数据
-    activate DB
-    DB-->>API: 2.1 返回 src_id
-    deactivate DB
-
-    API->>DB: 3. 创建生成任务(status=ready)
-    activate DB
-    DB-->>API: 3.1 返回 task_id
-    deactivate DB
-
-    API-->>Client: 4. 返回任务受理结果(task_id)
-
-    API->>LLM: 5. 识别候选类目(图片+标题)
-    activate LLM
-    LLM-->>API: 5.1 返回候选类目
-    deactivate LLM
-
-    alt 6. Embedding 可用
-        API->>Embedding: 6.1 生成候选类目嵌入向量
-        activate Embedding
-        Embedding-->>API: 6.2 返回候选类目向量
-        deactivate Embedding
-    else 6. Embedding 不可用
-        API->>API: 6.1 降级为关键词匹配
+    API->>REDIS: Read category cache
+    alt Cache hit
+      REDIS-->>API: final category
+    else Cache miss
+      API->>LLM: category step1 multimodal
+      API->>EMB: hybrid retrieve top3
+      API->>LLM: category step2 text rerank
+      API->>EMB: hybrid pick top1
+      API->>REDIS: write category cache
     end
 
-    API->>DB: 7. 查询站点类目列表
-    activate DB
-    DB-->>API: 7.1 返回 category_list
-    deactivate DB
-
-    alt 8. Embedding 可用
-        API->>Embedding: 8.1 批量生成站点类目嵌入向量
-        activate Embedding
-        Embedding-->>API: 8.2 返回类目向量列表
-        deactivate Embedding
-    else 8. Embedding 不可用
-        API->>API: 8.1 保持关键词匹配路径
-    end
-
-    API->>API: 9. 计算余弦相似度并筛选 Top-K
-
-    API->>LLM: 10. 选择最佳类目(图片+Top-K类目)
-    activate LLM
-    LLM-->>API: 10.1 返回最终类目
-    deactivate LLM
-
-    alt 10.2 Embedding 可用
-        API->>Embedding: 10.2.1 最终类目向量匹配并取 Top1
-        activate Embedding
-        Embedding-->>API: 10.2.2 返回最终类目
-        deactivate Embedding
-    else 10.2 Embedding 不可用
-        API->>API: 10.2.1 关键词匹配并取 Top1
-    end
-
-    API->>LLM: 11. 生成商品标题
-    activate LLM
-    LLM-->>API: 11.1 返回商品标题
-    deactivate LLM
-
-    API->>LLM: 12. 生成商品描述
-    activate LLM
-    LLM-->>API: 12.1 返回商品描述
-    deactivate LLM
-
-    API->>LLM: 13. 生成商品属性
-    activate LLM
-    LLM-->>API: 13.1 返回商品属性
-    deactivate LLM
-
-    API->>DB: 14. 保存生成结果
-    activate DB
-    DB-->>API: 14.1 保存成功
-    deactivate DB
-
-    API->>DB: 15. 更新任务状态(status=success)
-    activate DB
-    DB-->>API: 15.1 更新成功
-    deactivate DB
-
-    alt 16. 存在 notice_url
-        API->>Notice: 16.1 发送回调通知
-        activate Notice
-        Notice-->>API: 16.2 返回回调结果
-        deactivate Notice
-    end
-
-    deactivate API
+    API->>LLM: one call title desc attrs
+    API->>DB: save output and update task status
 ```
 
 ---
 
-## BGE 模型 Docker 部署
+## 4. 目录分层
 
-本项目可使用 embedding 模型进行商品类目语义匹配；若 embedding 未配置或不可用，系统会自动降级为关键词匹配，不阻断主流程。
-
-> 说明：当前代码通过 `db_sys_conf` 读取 `EMBEDDING_*` 配置。
-
-### 部署方式
-
-BGE 模型通过 **Docker** 部署为 API 服务，使用 [FlagOpen/FlagEmbedding](https://github.com/FlagOpen/FlagEmbedding) 项目提供的服务化脚本。
-
-### 1. 启动 BGE-M3 服务
-
-```bash
-docker run --gpus all -p 8000:80 -v "%cd%\data:/data" ghcr.io/huggingface/text-embeddings-inference:cuda-1.8.1 --model-id BAAI/bge-m3
-```
-
-### 2. 配置存储在数据库
-
-所有配置存储在 MySQL 数据库的 `db_sys_conf` 表中，系统启动时自动读取：
-
-| key | 说明 | 示例值 |
-|-----|------|--------|
-| EMBEDDING_API_KEY | API 认证密钥 | dummy |
-| EMBEDDING_BASE_URL | BGE 服务 API 地址 | http://bge-container-ip:8000/v1 |
-| EMBEDDING_MODEL | BGE 模型名称 | BAAI/bge-m3 |
-
-配置示例（插入数据库）：
-
-```sql
-INSERT INTO db_sys_conf (`key`, `value`, `enable`) VALUES
-('EMBEDDING_API_KEY', 'dummy', 1),
-('EMBEDDING_BASE_URL', 'http://192.168.1.100:8080/v1', 1),
-('EMBEDDING_MODEL', 'BAAI/bge-m3', 1);
-```
-
-> 应用会在调用嵌入服务时从数据库动态读取这些配置，修改配置后无需重启服务。
+- `app/main.py`：应用入口、路由注册、中间件
+- `app/routes/`：接口层（参数接收、调用 service、返回响应）
+- `app/services/`：业务流程编排（任务、类目、生成）
+- `app/utils/`：模型调用、embedding、缓存、通用工具
+- `app/models/`：ORM 模型
+- `app/schemas/`：请求/响应结构
+- `app/database.py`：数据库连接管理
+- `app/config.py`：统一配置与日志
+- `app/sql/`：建表/初始化 SQL
+- `frontend/`：Vue3 + Vite 前端
 
 ---
 
-## 环境变量
+## 5. 快速启动
 
-| 变量名 | 说明 | 默认值 |
-|--------|------|--------|
-| MYSQL_HOST | MySQL 主机 | localhost |
-| MYSQL_PORT | MySQL 端口 | 3306 |
-| MYSQL_USERNAME | MySQL 用户名 | root |
-| MYSQL_PASSWORD | MySQL 密码 | 123456 |
-| MYSQL_DATABASE | 数据库名 | ai_list |
+### 5.1 后端
 
----
-
-## 快速启动
-
-1. 安装依赖：
 ```bash
 uv venv .venv
 uv sync
+uv run uvicorn app.main:app --reload
 ```
 
-2. 配置数据库连接（推荐使用环境变量）
-
-3. 启动服务：
-```bash
-uv run uvicorn app.main:app --host 0.0.0.0 --port 1235 --reload
-```
-
-服务将在 `http://localhost:1235` 启动
-
-
-## AI 路由与评测（新增）
-
-### 1. 按任务路由模型
-
-系统支持通过 `db_ai_model_route` 按 `task_type + scene` 选择模型。请求可通过 Header 传入：
-
-- `x-ai-scene: default`（默认）
-
-已接入任务类型：
-
-- `shop_category`
-- `shop_title`
-- `shop_desc`
-- `shop_attribute`
-- `translate`
-- `batch_translate`
-- `ocr`
-
-### 2. 离线评测脚手架
-
-评测脚本：`app/eval/run_eval.py`
-
-示例：
+### 5.2 前端
 
 ```bash
-uv run python app/eval/run_eval.py --base-url http://localhost:1235 --scene default
+cd frontend
+npm install
+npm run dev
 ```
 
-评测数据：
+---
 
-- `app/eval/datasets/translate_eval.jsonl`
-- `app/eval/datasets/ocr_eval.jsonl`
+## 6. 配置说明
 
-### 企业评测命令（推荐）
+项目支持从根目录 `.env` 读取配置（`app/config.py` 已加载）。
 
-```bash
-uv run python app/eval/run_eval.py --base-url http://localhost:1235 --scene default --compare-scene promo --min-success-rate 0.95 --out app/eval/reports/report_ab.json
-```
+可参考 `.env.example`：
+- `MYSQL_USERNAME`
+- `MYSQL_PASSWORD`
+- `MYSQL_HOST`
+- `MYSQL_PORT`
+- `MYSQL_DATABASE`
+- `REDIS_URL`
+- `CATEGORY_CACHE_TTL_SECONDS`
+- `EMBEDDING_CACHE_TTL_SECONDS`
 
-输出包含：
-- success_rate / valid_output_rate
-- avg/p50/p95/p99 延迟
-- token 统计
-- 错误分类（auth/validation/server/timeout/connection）
-- 双场景差异（delta）
+---
+
+## 7. 已实现的关键优化
+
+- 类目第二步从多模态改为文本重排，降低时延
+- 类目结果 Redis 缓存（重复请求明显提速）
+- Embedding Redis 缓存（单条与批量均支持）
+- 商品文案合并为一次生成（标题+描述+属性）
+
+---
+
+## 8. 测试与报告
+
+- API 测试目录：`app/test_api/`
+- 并发压测报告：`app/test_api/concurrency_test_report_20260407.md`
+

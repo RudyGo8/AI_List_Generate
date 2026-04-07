@@ -4,11 +4,13 @@
 @File: shop.py
 '''
 import json
+import hashlib
 
-from app.config import logger
+from app.config import logger, CATEGORY_CACHE_TTL_SECONDS
 from app.models.constants import DataEnable
 from app.models.db_sys_ai_prompt import SysAiPrompt
 from app.services.llm import chat_with_llm
+from app.utils.cache_utils import get_json, set_json
 from app.utils.similar_utils import get_category_exchange
 
 
@@ -47,8 +49,31 @@ def _build_image_url_list(spu_image_url, sku_image_url_list):
     return image_url_list
 
 
+def _norm_text(value):
+    return (str(value) if value is not None else "").strip().lower()
+
+
+def _build_category_cache_key(site, scene, product_title, spu_image_url, category_name):
+    raw = "|".join([
+        _norm_text(site),
+        _norm_text(scene),
+        _norm_text(product_title),
+        _norm_text(spu_image_url),
+        _norm_text(category_name),
+    ])
+    digest = hashlib.sha1(raw.encode("utf-8")).hexdigest()
+    return f"ailist:cat:v1:{digest}"
+
+
 def shop_product_category(site, spu_image_url, sku_image_url_list, product_title, category_name, db_instance, scene='default'):
     try:
+        cache_key = _build_category_cache_key(site, scene, product_title, spu_image_url, category_name)
+        cache_hit = get_json(cache_key)
+        if cache_hit and isinstance(cache_hit, dict):
+            logger.info(f"category_cache_hit key={cache_key}")
+            return cache_hit, None
+        logger.info(f"category_cache_miss key={cache_key}")
+
         system_step_one = _get_prompt(
             db_instance,
             'SYSTEM_COMMON_CATEGORY_STEP_ONE',
@@ -117,8 +142,11 @@ def shop_product_category(site, spu_image_url, sku_image_url_list, product_title
         if not category_list:
             category_list = [{"category_path": "General", "category_id": "DEFAULT"}]
 
+        result = category_list[0]
+        set_json(cache_key, result, ttl_seconds=CATEGORY_CACHE_TTL_SECONDS)
+
         logger.info(category_list)
-        return category_list[0], usage
+        return result, usage
     except Exception as error:
         logger.error(error)
         return {"category_path": "General", "category_id": "DEFAULT"}, None

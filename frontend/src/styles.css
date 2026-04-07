@@ -166,6 +166,12 @@ button:disabled { opacity: 0.65; cursor: not-allowed; }
   padding: 8px 6px;
   vertical-align: top;
 }
+.clickable-row {
+  cursor: pointer;
+}
+.clickable-row:hover {
+  background: #f8fbff;
+}
 .status {
   font-size: 12px;
   padding: 2px 7px;
@@ -309,6 +315,33 @@ pre { margin: 0; padding: 11px; white-space: pre-wrap; word-break: break-all; }
   margin: 10px 0 6px;
   font-size: 13px;
 }
+.result-detail .auto-grow {
+  resize: none;
+  overflow: hidden;
+}
+.attr-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.attr-item {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdff;
+  padding: 8px;
+}
+.attr-key {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.attr-value {
+  margin: 0;
+  font-size: 13px;
+  color: #0f172a;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 .result-detail p {
   margin: 0;
   color: #1e293b;
@@ -321,6 +354,7 @@ pre { margin: 0; padding: 11px; white-space: pre-wrap; word-break: break-all; }
   .workspace { grid-template-columns: 1fr; }
   .kpis { grid-template-columns: 1fr; }
   .result-grid { grid-template-columns: 1fr; }
+  .attr-grid { grid-template-columns: 1fr; }
   .trend-row { grid-template-columns: 64px 1fr 60px; }
   .topbar { flex-direction: column; align-items: flex-start; gap: 8px; }
 }

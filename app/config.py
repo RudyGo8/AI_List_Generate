@@ -8,6 +8,30 @@ import logging
 import os
 from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler
+from pathlib import Path
+
+
+def _load_env_file(env_path: Path):
+    if not env_path.exists():
+        return
+    try:
+        for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            if key and key not in os.environ:
+                os.environ[key] = value
+    except Exception:
+        # Keep app startup resilient even if .env is malformed.
+        pass
+
+
+# Load environment variables from project root .env (if present).
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+_load_env_file(PROJECT_ROOT / ".env")
 
 # MySQL settings
 MYSQL_USERNAME = os.getenv("MYSQL_USERNAME", "root")
@@ -18,6 +42,11 @@ MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "ai_list")
 
 # Logging path
 LOG_PATH = os.getenv("LOG_PATH", "./logs")
+
+# Redis cache settings
+REDIS_URL = os.getenv("REDIS_URL", "").strip()
+CATEGORY_CACHE_TTL_SECONDS = int(os.getenv("CATEGORY_CACHE_TTL_SECONDS", "21600"))
+EMBEDDING_CACHE_TTL_SECONDS = int(os.getenv("EMBEDDING_CACHE_TTL_SECONDS", "86400"))
 
 
 def json_formatter(record):
