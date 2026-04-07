@@ -147,7 +147,8 @@ cd frontend
 npm install
 npm run dev
 ```
-
+docker 向量库
+docker run --gpus all -p 8000:80 -v "%cd%\data:/data" ghcr.io/huggingface/text-embeddings-inference:cuda-1.8.1 --model-id BAAI/bge-m3
 ---
 
 ## 6. 配置说明
