@@ -1,5 +1,5 @@
-'''
-@create_time: 2026/3/28 上午11:10
+﻿'''
+@create_time: 2026/3/28 涓婂崍11:10
 @Author: GeChao
 @File: tasks.py
 '''
@@ -17,7 +17,7 @@ from app.models.db_product_des_detail import ProductDesDetail
 from app.models.db_product_src_detail import ProductSrcDetail
 from app.models.db_product_task_detail import DbProductTaskDetail
 from app.services.llm import get_model_used
-from app.services.shop import shop_product_category, shop_product_title, shop_product_desc, shop_product_attributes
+from app.services.shop import shop_product_category, shop_product_bundle_text_only
 from app.utils.param_utils import list_url_to_str, usage_addition, list_to_str, filter_product_response, json_serial
 
 
@@ -48,7 +48,7 @@ def set_product_src_to_db(clientId,
                           tag_type,
                           custom_data,
                           des_lang_type):
-    """存储原始商品数据到数据库"""
+    """瀛樺偍鍘熷鍟嗗搧鏁版嵁鍒版暟鎹簱"""
     db_instance = next(get_db_instance())
     try:
         new_product_src = ProductSrcDetail(
@@ -95,7 +95,7 @@ def set_product_src_to_db(clientId,
 def set_product_des_to_db(clientId, site, platform_id, product_src_id, model_name,
                           product_title, product_desc, spu_image_url, sku_image_url_list, category_name, category_id,
                           tag_value, sales_attr_value_list, attr_value_list, duration, usage, remark, db_instance):
-    """存储生成的商品数据到数据库"""
+    """Store generated product data into database."""
     try:
         llm_model = get_model_used(task_type='shop_desc')
 
@@ -172,7 +172,7 @@ def shop_product_generate_wrapper(task_record_id, batch_no):
 
         usage_total = None
         start_time = time.time()
-        '''1.大模型生成目录'''
+        # 1) generate category
         des_product_category, usage = shop_product_category(site=task_record.site,
                                                             spu_image_url=product_src.spu_image_url,
                                                             sku_image_url_list=product_src.sku_image_url_list,
@@ -184,52 +184,27 @@ def shop_product_generate_wrapper(task_record_id, batch_no):
             des_product_category = {"category_path": "General", "category_id": "DEFAULT"}
         usage_total = usage_addition(usage_total, usage)
 
-        '''2.大模型生成标题'''
-        des_product_title, usage = shop_product_title(spu_image_url=product_src.spu_image_url,
-                                                      sku_image_url_list=product_src.sku_image_url_list,
-                                                      product_title=product_src.product_title,
-                                                      category_name=des_product_category.get('category_path', 'General'),
-                                                      db_instance=session_for_thread,
-                                                      des_lang_type=task_record.des_lang_type,
-                                                      scene=scene)
-
-        if des_product_title is None:
-            des_product_title = "Generated Title"
+        # 2) generate title/description/attributes in one text-only call
+        bundle_result, usage = shop_product_bundle_text_only(
+            product_title=product_src.product_title,
+            category_name=des_product_category.get('category_path', 'General'),
+            attributes=product_src.attributes,
+            db_instance=session_for_thread,
+            des_lang_type=task_record.des_lang_type,
+            scene=scene
+        )
         usage_total = usage_addition(usage_total, usage)
 
-        '''3.大模型生成描述'''
-        des_product_desc, usage = shop_product_desc(spu_image_url=product_src.spu_image_url,
-                                                    sku_image_url_list=product_src.sku_image_url_list,
-                                                    product_title=des_product_title,
-                                                    category_name=des_product_category.get('category_path', 'General'),
-                                                    db_instance=session_for_thread,
-                                                    des_lang_type=task_record.des_lang_type,
-                                                    scene=scene)
-        if des_product_desc is None:
-            des_product_desc = "Generated Description"
-        usage_total = usage_addition(usage_total, usage)
-
-        '''4.大模型生成属性 '''
-        des_product_attribute, usage = shop_product_attributes(site=task_record.site,
-                                                               spu_image_url=product_src.spu_image_url,
-                                                               sku_image_url_list=product_src.sku_image_url_list,
-                                                               product_title=des_product_title,
-                                                               category_id=des_product_category.get("category_id", "DEFAULT"),
-                                                               category_name=des_product_category.get("category_path", "General"),
-                                                               product_desc=des_product_desc,
-                                                               attributes=product_src.attributes,
-                                                               db_instance=session_for_thread,
-                                                               des_lang_type=task_record.des_lang_type,
-                                                               scene=scene)
-
-        if des_product_attribute is None:
-            des_product_attribute = "{}"
-        usage_total = usage_addition(usage_total, usage)
+        if not bundle_result:
+            bundle_result = {}
+        des_product_title = bundle_result.get("product_title") or "Generated Title"
+        des_product_desc = bundle_result.get("product_desc") or "Generated Description"
+        des_product_attribute = bundle_result.get("attributes") or "{}"
 
         end_time = time.time()
         duration = end_time - start_time
 
-        '''5.保存数据库'''
+        # 5) persist generated data
         title_to_save = str(des_product_title)[:250] if des_product_title else "Product"
         desc_to_save = str(des_product_desc)[:5000] if des_product_desc else "Description"
         attr_to_save = str(des_product_attribute)[:5000] if des_product_attribute else "{}"
@@ -246,12 +221,12 @@ def shop_product_generate_wrapper(task_record_id, batch_no):
                                                  sales_attr_value_list=None,
                                                  attr_value_list=attr_to_save, duration=duration,
                                                  usage=usage_total,
-                                                 remark=f"由 {llm_model} 生成",
+                                                 remark=f"鐢?{llm_model} 鐢熸垚",
                                                  db_instance=session_for_thread)
         if not res:
             return False
 
-        '''6.任务通知'''
+        # 6) optional callback notification
         if task_record.notice_url:
             notice_content = product_des.to_dict()
             res = notice_wrapper(gid=task_record.gid, task_type=BatchType.PRODUCT_GENERATE.value,
@@ -364,3 +339,4 @@ def get_product_des_by_task(task_id):
         return DataStatus.FAIL.value, None, None, None
     finally:
         db_instance.close()
+

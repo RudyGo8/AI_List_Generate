@@ -4,7 +4,7 @@
       <div class="brand">
         <div class="brand-mark">AI</div>
         <div>
-          <h1>Listing ERP</h1>
+          <h1>Listing</h1>
           <p>Product Ops Console</p>
         </div>
       </div>

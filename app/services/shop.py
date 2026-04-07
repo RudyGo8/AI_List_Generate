@@ -3,6 +3,8 @@
 @Author: GeChao
 @File: shop.py
 '''
+import json
+
 from app.config import logger
 from app.models.constants import DataEnable
 from app.models.db_sys_ai_prompt import SysAiPrompt
@@ -102,7 +104,7 @@ def shop_product_category(site, spu_image_url, sku_image_url_list, product_title
                 user_step_two = f"Product title: {title}\nCandidate categories: {category_list_str}\nReturn the best category path only."
 
             category_path_by_ai_step2, usage_step2 = chat_with_llm(
-                image_url_list=image_url_list,
+                image_url_list=None,
                 user_prompt=user_step_two,
                 system_prompt=system_step_two,
                 task_type='shop_category',
@@ -236,6 +238,97 @@ def shop_product_attributes(site, spu_image_url, sku_image_url_list, product_tit
             scene=scene,
         )
         return res, usage
+    except Exception as error:
+        logger.error(error)
+        return None, None
+
+
+def _extract_json_payload(raw_text):
+    if not raw_text:
+        return None
+    if isinstance(raw_text, dict):
+        return raw_text
+
+    text = str(raw_text).strip()
+    if text.startswith("```"):
+        text = text.strip("`")
+        if text.lower().startswith("json"):
+            text = text[4:].strip()
+
+    try:
+        return json.loads(text)
+    except Exception:
+        pass
+
+    start_idx = text.find('{')
+    end_idx = text.rfind('}')
+    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+        try:
+            return json.loads(text[start_idx:end_idx + 1])
+        except Exception:
+            return None
+    return None
+
+
+def shop_product_bundle_text_only(product_title, category_name, attributes, des_lang_type, db_instance, scene='default'):
+    """
+    One-call generation for title/description/attributes.
+    Text-only by design to reduce latency and image-token cost.
+    """
+    try:
+        system_prompt = _get_prompt(
+            db_instance,
+            ['SYSTEM_SHOP_PRODUCT_BUNDLE', 'SYSTEM_TIKTOKSHOP_PRODUCT_BUNDLE'],
+            "You are an ecommerce listing expert. Generate title, description and attributes in JSON only.",
+            scene=scene
+        )
+        user_prompt_tpl = _get_prompt(
+            db_instance,
+            ['USER_SHOP_PRODUCT_BUNDLE', 'USER_TIKTOKSHOP_PRODUCT_BUNDLE'],
+            (
+                "Original title: %s\nCategory: %s\nLanguage: %s\nOriginal attributes: %s\n\n"
+                "Return strict JSON with keys: product_title, product_desc, attributes."
+            ),
+            scene=scene
+        )
+
+        title = product_title or ""
+        cat = category_name or ""
+        lang = des_lang_type or "English"
+        attrs = str(attributes or "")
+        try:
+            user_prompt = user_prompt_tpl % (title, cat, lang, attrs)
+        except Exception:
+            user_prompt = (
+                f"Original title: {title}\nCategory: {cat}\nLanguage: {lang}\nOriginal attributes: {attrs}\n"
+                "Return strict JSON with keys: product_title, product_desc, attributes."
+            )
+
+        raw_text, usage = chat_with_llm(
+            image_url_list=None,
+            user_prompt=user_prompt,
+            system_prompt=system_prompt,
+            task_type='shop_desc',
+            scene=scene,
+        )
+
+        data = _extract_json_payload(raw_text) or {}
+        product_title_out = data.get('product_title') or data.get('title') or "Generated Title"
+        product_desc_out = data.get('product_desc') or data.get('description') or "Generated Description"
+        attributes_out = data.get('attributes')
+        if attributes_out is None:
+            attributes_out = "{}"
+
+        if isinstance(attributes_out, (dict, list)):
+            attributes_out = json.dumps(attributes_out, ensure_ascii=False)
+        else:
+            attributes_out = str(attributes_out)
+
+        return {
+            "product_title": str(product_title_out),
+            "product_desc": str(product_desc_out),
+            "attributes": attributes_out,
+        }, usage
     except Exception as error:
         logger.error(error)
         return None, None

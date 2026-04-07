@@ -5,6 +5,7 @@
 '''
 from openai import OpenAI
 
+from app.config import logger
 from app.database import get_db_instance
 from app.models.db_sys_conf import SysConf
 from app.models.constants import DataEnable
@@ -59,7 +60,7 @@ def ai_chat_qwen(image_url_list, user_prompt, system_prompt=None, model_override
         return completion.choices[0].message.content, usage_dict
 
     except Exception as error:
-        print(f"Error: {error}")
+        logger.error(f"ai_chat_qwen error: {error}")
         return None, None
 
     finally:

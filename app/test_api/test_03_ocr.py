@@ -23,7 +23,7 @@ headers = {
 def test_ocr():
     url = f"{base_url}/api/r1/c/ocr"
     data = {
-        "image_url_list": ["https://raw.githubusercontent.com/RudyGo8/RudyGo8/refs/heads/main/8.jpg"]
+        "image_url_list": ["https://github.com/RudyGo8/AI_List_Generate/blob/master/datasets/iphone.png?raw=true"]
     }
     response = requests.post(url, headers=headers, json=data)
     print(f"状态码: {response.status_code}")

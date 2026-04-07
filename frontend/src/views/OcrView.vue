@@ -38,7 +38,7 @@ import { ref } from 'vue'
 import JsonCard from '../components/JsonCard.vue'
 import { ocr } from '../api/client.js'
 
-const imageUrls = ref('https://raw.githubusercontent.com/RudyGo8/RudyGo8/refs/heads/main/8.jpg')
+const imageUrls = ref('https://raw.githubusercontent.com/RudyGo8/AI_List_Generate/refs/heads/master/datasets/iphone.png')
 const loading = ref(false)
 const error = ref('')
 const result = ref(null)
