@@ -181,3 +181,38 @@ docker run --gpus all -p 8000:80 -v "%cd%\data:/data" ghcr.io/huggingface/text-e
 - API 测试目录：`app/test_api/`
 - 并发压测报告：`app/test_api/concurrency_test_report_20260407.md`
 
+---
+
+## 9. Docker Compose（一键依赖环境）
+
+项目根目录已提供：
+- `docker-compose.yml`
+- `.env.compose.example`
+
+使用步骤：
+
+1. 复制环境文件
+```bash
+cp .env.compose.example .env.compose
+```
+
+2. 启动依赖（MySQL + Redis + Embedding）
+```bash
+docker compose --env-file .env.compose up -d
+```
+
+3. 后端 `.env` 建议配置
+```env
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_USERNAME=root
+MYSQL_PASSWORD=123456
+MYSQL_DATABASE=ai_list
+
+REDIS_URL=redis://localhost:6379/0
+```
+
+说明：
+- 首次启动 MySQL 会自动执行 `app/sql/create_tables.sql` 与 `app/sql/insert_data.sql`。
+- 若你已有现成 embedding 镜像，可在 `.env.compose` 中替换 `EMBEDDING_IMAGE`。
+
