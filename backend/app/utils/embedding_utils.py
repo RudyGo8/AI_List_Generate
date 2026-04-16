@@ -36,7 +36,7 @@ def _get_embedding_conf(db):
 
 
 def get_embedding(text: str) -> List[float]:
-    """Generate one embedding vector."""
+    """生成embedding向量"""
     db = next(get_db_instance())
     try:
         embedding_api_key, embedding_base_url, embedding_model = _get_embedding_conf(db)
@@ -129,7 +129,6 @@ def batch_get_embeddings(texts: List[str]) -> List[List[float]]:
 
 
 def find_similar_categories(query_text: str, category_list: List[Dict[str, Any]], top_k: int = 3) -> List[Dict[str, Any]]:
-    """Find similar categories by embedding similarity."""
     if not category_list:
         return []
 

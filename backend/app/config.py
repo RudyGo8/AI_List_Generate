@@ -25,32 +25,28 @@ def _load_env_file(env_path: Path):
             if key and key not in os.environ:
                 os.environ[key] = value
     except Exception:
-        # Keep app startup resilient even if .env is malformed.
+
         pass
 
 
-# Load environment variables from project root .env (if present).
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-_load_env_file(PROJECT_ROOT / ".env")
+# 切换docker环境
+_load_env_file(PROJECT_ROOT / ".env.compose")
 
-# MySQL settings
-MYSQL_USERNAME = os.getenv("MYSQL_USERNAME", "root")
-MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "123456")
-MYSQL_HOST = os.getenv("MYSQL_HOST", "localhost")
-MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
-MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "ai_list")
+MYSQL_USERNAME = os.getenv("MYSQL_USERNAME")
+MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD")
+MYSQL_HOST = os.getenv("MYSQL_HOST")
+MYSQL_PORT = int(os.getenv("MYSQL_PORT"))
+MYSQL_DATABASE = os.getenv("MYSQL_DATABASE")
 
-# Logging path
 LOG_PATH = os.getenv("LOG_PATH", "./logs")
 
-# Redis cache settings
 REDIS_URL = os.getenv("REDIS_URL", "").strip()
 CATEGORY_CACHE_TTL_SECONDS = int(os.getenv("CATEGORY_CACHE_TTL_SECONDS", "21600"))
 EMBEDDING_CACHE_TTL_SECONDS = int(os.getenv("EMBEDDING_CACHE_TTL_SECONDS", "86400"))
 
 
 def json_formatter(record):
-    """Convert a logging record to a JSON string."""
     log_record = {
         "time": record.asctime,
         "name": record.name,
@@ -64,7 +60,6 @@ def json_formatter(record):
 
 
 class JsonLogFormatter(logging.Formatter):
-    """Custom formatter to output logs in JSON format."""
 
     def format(self, record):
         record.asctime = self.formatTime(record)
@@ -72,7 +67,6 @@ class JsonLogFormatter(logging.Formatter):
 
 
 def setup_logging(log_file_path=None):
-    """Set up logging for the application."""
     root_logger = logging.getLogger()
     if getattr(root_logger, "_ai_list_logging_configured", False):
         return

@@ -16,7 +16,7 @@ def _get_enabled_conf_value(db, key: str):
 
 
 def _get_route_model(db, task_type: str, scene: str = 'default'):
-    """Read optional per-task model route. Fallback to global when table/config is missing."""
+    """按任务分配路由"""
     try:
         from app.models.db_ai_model_route import DbAiModelRoute
 
