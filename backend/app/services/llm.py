@@ -18,7 +18,7 @@ def _get_enabled_conf_value(db, key: str):
 def _get_route_model(db, task_type: str, scene: str = 'default'):
     """按任务分配路由"""
     try:
-        from app.models.db_ai_model_route import DbAiModelRoute
+        from backend.app.models.db_ai_model_route import DbAiModelRoute
 
         route = db.query(DbAiModelRoute).filter_by(
             task_type=task_type,

@@ -7,6 +7,7 @@
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
+from backend.app.config import logger
 from backend.app.schemas.translate import TranslateRequest, BatchTranslateRequest
 from backend.app.utils.dependencies import api_key_check
 from backend.app.services.text_generator import service_text_translate, service_batch_text_translate
@@ -37,7 +38,6 @@ async def route_text_translate(request: Request, translate_req: TranslateRequest
 
 @router_r1.post("/batchtranslate")
 async def route_batch_text_translate(request: Request, batch_translate_req: BatchTranslateRequest) -> JSONResponse:
-    from app.config import logger
     clientId = (request.headers.get('accesskey'))
     scene = request.headers.get('x-ai-scene', 'default')
 

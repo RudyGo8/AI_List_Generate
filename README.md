@@ -126,8 +126,7 @@ sequenceDiagram
 - `app/database.py`：数据库连接管理
 - `app/config.py`：统一配置与日志
 - `sql/`：建表/初始化 SQL
-- `tests/api/`：接口测试与并发压测脚本
-- `eval/`：评测数据集与评测脚本
+- `tests/api/`：接口测试脚本
 - `logs/`：运行日志输出目录（建议忽略提交）
 - `frontend/`：Vue3 + Vite 前端
 
@@ -212,7 +211,6 @@ uv add --group dev <package>
 ## 8. 测试与报告
 
 - API 测试目录：`tests/api/`
-- 并发压测报告：`tests/api/concurrency_test_report_20260407.md`
 
 ---
 

@@ -2,12 +2,11 @@
 """
 测试 Embedding 类目匹配功能
 """
-from app.utils.similar_utils import get_category_exchange
-from app.services.embedding_generator import get_shop_my_categories
+from backend.app.utils.similar_utils import get_category_exchange
+from backend.app.services.embedding_generator import get_shop_my_categories
 
 
 def test_get_category_exchange():
-    """测试 get_category_exchange"""
     print("=" * 50)
     print("=" * 50)
     
@@ -30,9 +29,8 @@ def test_get_category_exchange():
     return result
 
 
-def test_get_tiktokshop_my_categories():
-    """测试 get_tiktokshop_my_categories"""
-    
+def test_get_shop_my_categories():
+
     result = get_shop_my_categories(
         query_text="手机 > 智能手机",
         site="tiktok",
@@ -47,7 +45,7 @@ def test_get_tiktokshop_my_categories():
 if __name__ == "__main__":
     try:
         test_get_category_exchange()
-        test_get_tiktokshop_my_categories()
+        test_get_shop_my_categories()
         print("\n" + "=" * 50)
         print("=" * 50)
     except Exception as e:

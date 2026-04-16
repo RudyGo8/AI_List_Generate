@@ -1,4 +1,3 @@
-
 import requests
 import json
 
@@ -16,10 +15,19 @@ def test_batch_translate():
         "des_lang_type": "English",
         "content_list": ["我爱AI", "我爱大模型", "我爱人工智能"]
     }
-    response = requests.post(url, headers=headers, json=data)
+    response = requests.post(url, headers=headers, json=data, timeout=60)
 
     print(f"状态码: {response.status_code}")
-    print(f"响应: {json.dumps(response.json(), ensure_ascii=False, indent=2)}")
+    content_type = response.headers.get("content-type", "")
+    if "application/json" in content_type.lower():
+        body = response.json()
+        print(f"响应: {json.dumps(body, ensure_ascii=False, indent=2)}")
+    else:
+        body = None
+        print(f"非JSON响应: {response.text}")
+
+    assert response.status_code == 200, f"batchtranslate failed: {response.status_code}, body={response.text}"
+    assert body is not None and body.get("success") is True, f"unexpected response body: {body}"
 
 
 if __name__ == "__main__":
