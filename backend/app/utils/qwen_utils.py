@@ -5,10 +5,10 @@
 '''
 from openai import OpenAI
 
-from app.config import logger
-from app.database import get_db_instance
-from app.models.db_sys_conf import SysConf
-from app.models.constants import DataEnable
+from backend.app.config import logger
+from backend.app.database import get_db_instance
+from backend.app.models.db_sys_conf import SysConf
+from backend.app.models.constants import DataEnable
 
 ''' 调用qwen模型 '''
 

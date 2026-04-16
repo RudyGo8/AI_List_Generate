@@ -1,6 +1,6 @@
 from sqlalchemy import Column, BigInteger, String, DateTime, Text, Index, Integer, Float
 from sqlalchemy.sql import func
-from app.database import Base
+from backend.app.database import Base
 
 
 class DbNoticeDetail(Base):

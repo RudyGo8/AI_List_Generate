@@ -125,7 +125,10 @@ sequenceDiagram
 - `app/schemas/`：请求/响应结构
 - `app/database.py`：数据库连接管理
 - `app/config.py`：统一配置与日志
-- `app/sql/`：建表/初始化 SQL
+- `sql/`：建表/初始化 SQL
+- `tests/api/`：接口测试与并发压测脚本
+- `eval/`：评测数据集与评测脚本
+- `logs/`：运行日志输出目录（建议忽略提交）
 - `frontend/`：Vue3 + Vite 前端
 
 ---
@@ -135,13 +138,20 @@ sequenceDiagram
 ### 5.1 后端
 
 ```bash
+cd backend
 uv venv .venv
-uv sync
+uv sync --group dev
 uv run uvicorn app.main:app --reload
 ```
 
-### 5.2 前端
+后端测试（按需）：
 
+```bash
+cd backend
+uv run pytest tests/api
+```
+
+### 5.2 前端
 ```bash
 cd frontend
 npm install
@@ -151,11 +161,34 @@ docker 向量库
 docker run --gpus all -p 8000:80 -v "%cd%\data:/data" ghcr.io/huggingface/text-embeddings-inference:cuda-1.8.1 --model-id BAAI/bge-m3
 ---
 
+## 5.3 uv 企业标准（团队协作推荐，放在 backend 目录）
+
+- 统一 Python 版本：`backend/.python-version`（当前 `3.11`）
+- 统一虚拟环境目录：`backend/.venv`
+- 统一依赖入口：`backend/pyproject.toml`（不再以 `requirements.txt` 作为主入口）
+- 锁文件：`backend/uv.lock` 必须提交到仓库，保证可复现
+
+常用命令：
+
+```bash
+# 首次初始化
+cd backend
+uv venv .venv
+uv lock
+uv sync --group dev
+
+# CI/生产：严格按锁文件安装
+uv sync --frozen --group dev
+
+# 新增依赖
+uv add <package>
+uv add --group dev <package>
+```
+
 ## 6. 配置说明
+`app/config.py` 会优先读取 `backend/.env.compose`、`backend/.env`，并兼容读取仓库根目录同名文件。
 
-项目支持从根目录 `.env` 读取配置（`app/config.py` 已加载）。
-
-可参考 `.env.example`：
+可参考 `backend/.env.example`：
 - `MYSQL_USERNAME`
 - `MYSQL_PASSWORD`
 - `MYSQL_HOST`
@@ -178,8 +211,8 @@ docker run --gpus all -p 8000:80 -v "%cd%\data:/data" ghcr.io/huggingface/text-e
 
 ## 8. 测试与报告
 
-- API 测试目录：`app/test_api/`
-- 并发压测报告：`app/test_api/concurrency_test_report_20260407.md`
+- API 测试目录：`tests/api/`
+- 并发压测报告：`tests/api/concurrency_test_report_20260407.md`
 
 ---
 
@@ -187,32 +220,37 @@ docker run --gpus all -p 8000:80 -v "%cd%\data:/data" ghcr.io/huggingface/text-e
 
 项目根目录已提供：
 - `docker-compose.yml`
-- `.env.compose.example`
+- `backend/.env.compose.example`
+- `backend/Dockerfile`
+- `frontend/Dockerfile`
 
 使用步骤：
 
-1. 复制环境文件
+1. 复制编排环境文件（根目录）
 ```bash
 cp .env.compose.example .env.compose
 ```
 
-2. 启动依赖（MySQL + Redis + Embedding）
+2. 复制后端运行环境文件
+```bash
+cp backend/.env.compose.example backend/.env.compose
+```
+
+3. 修改 `backend/.env.compose`（如数据库用户名密码、缓存 TTL）
+
+4. 启动全栈（MySQL + Redis + Embedding + Backend + Frontend）
 ```bash
 docker compose --env-file .env.compose up -d
 ```
 
-3. 后端 `.env` 建议配置
-```env
-MYSQL_HOST=localhost
-MYSQL_PORT=3306
-MYSQL_USERNAME=root
-MYSQL_PASSWORD=123456
-MYSQL_DATABASE=ai_list
-
-REDIS_URL=redis://localhost:6379/0
-```
+5. 访问地址
+- 前端：`http://localhost:5173`
+- 后端：`http://localhost:1235`
+- Embedding：`http://localhost:8081`
 
 说明：
-- 首次启动 MySQL 会自动执行 `app/sql/create_tables.sql` 与 `app/sql/insert_data.sql`。
-- 若你已有现成 embedding 镜像，可在 `.env.compose` 中替换 `EMBEDDING_IMAGE`。
+- 首次启动 MySQL 会自动执行 `sql/create_tables.sql` 与 `sql/insert_data.sql`。
+- `AI_*`、`EMBEDDING_*` 模型配置仍按项目原逻辑从数据库 `db_sys_conf` 读取，不从环境变量写入。
+- 若你已有现成 embedding 镜像，可在 `.env.compose` 中替换 `EMBEDDING_IMAGE` 与 `EMBEDDING_MODEL_ID`。
+
 

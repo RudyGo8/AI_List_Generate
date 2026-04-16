@@ -5,10 +5,10 @@
 '''
 from fastapi import APIRouter, Depends, Request
 
-from app.schemas.common import CommonResponse
-from app.schemas.ocr import OcrRequest
-from app.services.multimodel_generator import common_image_ocr
-from app.utils.dependencies import api_key_check
+from backend.app.schemas.common import CommonResponse
+from backend.app.schemas.ocr import OcrRequest
+from backend.app.services.multimodel_generator import common_image_ocr
+from backend.app.utils.dependencies import api_key_check
 
 router_r1 = APIRouter(
     prefix="/api/r1/c",

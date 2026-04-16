@@ -7,14 +7,14 @@ from fastapi import APIRouter, Depends, BackgroundTasks
 from fastapi import Request
 import json
 
-from app.schemas.common import CommonResponse
-from app.services.tasks import set_product_src_to_db, shop_product_generate_wrapper, get_product_des_by_task
-from app.utils.dependencies import api_key_check
-from app.schemas.list import ListGenerateRequest
-from app.utils.get_data_utils import get_product
-from app.utils.param_utils import filter_product_response
-from app.utils.response_utils import fail_api
-from app.models.constants import DataStatus
+from backend.app.schemas.common import CommonResponse
+from backend.app.services.tasks import set_product_src_to_db, shop_product_generate_wrapper, get_product_des_by_task
+from backend.app.utils.dependencies import api_key_check
+from backend.app.schemas.list import ListGenerateRequest
+from backend.app.utils.get_data_utils import get_product
+from backend.app.utils.param_utils import filter_product_response
+from backend.app.utils.response_utils import fail_api
+from backend.app.models.constants import DataStatus
 
 router_r1 = APIRouter(
     prefix="/api/r1/shop",

@@ -3,9 +3,9 @@
 @Author: GeChao
 @File: similar_utils.py
 '''
-from app.database import get_db_instance
-from app.models.db_category import Category
-from app.services.category_matcher import rank_categories_hybrid
+from backend.app.database import get_db_instance
+from backend.app.models.db_category import Category
+from backend.app.services.category_matcher import rank_categories_hybrid
 
 
 # Hybrid检索-向量+关键词

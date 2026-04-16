@@ -1,8 +1,0 @@
-{"time": "2026-03-27 15:19:50,584", "name": "app.config", "level": "INFO", "message": "Request: POST http://localhost:1235/api/r1/c/translate", "filename": "main.py", "funcName": "log_request", "lineno": 15}
-{"time": "2026-03-27 15:19:50,663", "name": "app.config", "level": "ERROR", "message": "'NoneType' object has no attribute 'value'", "filename": "llm.py", "funcName": "chat_with_llm", "lineno": 23}
-{"time": "2026-03-27 15:19:53,947", "name": "httpx", "level": "INFO", "message": "HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions \"HTTP/1.1 200 OK\"", "filename": "_client.py", "funcName": "_send_single_request", "lineno": 1025}
-{"time": "2026-03-27 15:19:53,951", "name": "app.config", "level": "INFO", "message": "Response: 200 http://localhost:1235/api/r1/c/translate", "filename": "main.py", "funcName": "log_request", "lineno": 17}
-{"time": "2026-03-27 15:22:42,581", "name": "app.config", "level": "INFO", "message": "Request: POST http://localhost:1235/api/r1/c/translate", "filename": "main.py", "funcName": "log_request", "lineno": 15}
-{"time": "2026-03-27 15:22:42,585", "name": "app.config", "level": "ERROR", "message": "'NoneType' object has no attribute 'value'", "filename": "llm.py", "funcName": "chat_with_llm", "lineno": 23}
-{"time": "2026-03-27 15:22:45,823", "name": "httpx", "level": "INFO", "message": "HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions \"HTTP/1.1 200 OK\"", "filename": "_client.py", "funcName": "_send_single_request", "lineno": 1025}
-{"time": "2026-03-27 15:22:45,824", "name": "app.config", "level": "INFO", "message": "Response: 200 http://localhost:1235/api/r1/c/translate", "filename": "main.py", "funcName": "log_request", "lineno": 17}

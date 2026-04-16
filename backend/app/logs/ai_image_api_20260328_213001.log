@@ -1,2 +1,0 @@
-{"time": "2026-03-28 21:30:01,956", "name": "__main__", "level": "INFO", "message": "This is a test log message.", "filename": "config.py", "funcName": "<module>", "lineno": 79}
-{"time": "2026-03-28 21:30:01,957", "name": "__main__", "level": "ERROR", "message": "This is an error log message.", "filename": "config.py", "funcName": "<module>", "lineno": 80}

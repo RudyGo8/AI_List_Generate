@@ -1,5 +1,5 @@
-'''
-@create_time: 2026/3/25 下午8:17
+﻿'''
+@create_time: 2026/3/25 涓嬪崍8:17
 @Author: GeChao
 @File: config.py
 '''
@@ -31,12 +31,18 @@ def _load_env_file(env_path: Path):
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 # 切换docker环境
-_load_env_file(PROJECT_ROOT / ".env.compose")
+for env_candidate in (
+    # PROJECT_ROOT / ".env.compose",
+    PROJECT_ROOT / ".env",
+    # PROJECT_ROOT.parent / ".env.compose",
+    PROJECT_ROOT.parent / ".env",
+):
+    _load_env_file(env_candidate)
 
 MYSQL_USERNAME = os.getenv("MYSQL_USERNAME")
 MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD")
 MYSQL_HOST = os.getenv("MYSQL_HOST")
-MYSQL_PORT = int(os.getenv("MYSQL_PORT"))
+MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
 MYSQL_DATABASE = os.getenv("MYSQL_DATABASE")
 
 LOG_PATH = os.getenv("LOG_PATH", "./logs")
@@ -104,4 +110,5 @@ if __name__ == '__main__':
     test_logger.info("This is a test log message.")
     test_logger.error("This is an error log message.")
 
-    print("日志已写入 test_log.log")
+    print("鏃ュ織宸插啓鍏?test_log.log")
+

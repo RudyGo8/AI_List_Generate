@@ -1,4 +1,0 @@
-{"time": "2026-03-28 10:03:34,196", "name": "app.config", "level": "INFO", "message": "Request: GET http://localhost:1235/docs", "filename": "main.py", "funcName": "log_request", "lineno": 16}
-{"time": "2026-03-28 10:03:34,198", "name": "app.config", "level": "INFO", "message": "Response: 200 http://localhost:1235/docs", "filename": "main.py", "funcName": "log_request", "lineno": 18}
-{"time": "2026-03-28 10:03:34,374", "name": "app.config", "level": "INFO", "message": "Request: GET http://localhost:1235/openapi.json", "filename": "main.py", "funcName": "log_request", "lineno": 16}
-{"time": "2026-03-28 10:03:34,381", "name": "app.config", "level": "INFO", "message": "Response: 200 http://localhost:1235/openapi.json", "filename": "main.py", "funcName": "log_request", "lineno": 18}

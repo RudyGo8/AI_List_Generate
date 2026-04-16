@@ -5,7 +5,7 @@
 '''
 from sqlalchemy import Column, String, BigInteger, Text, DateTime, func, Index
 
-from app.database import Base
+from backend.app.database import Base
 
 
 class ProductSrcDetail(Base):

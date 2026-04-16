@@ -3,7 +3,7 @@
 @Author: GeChao
 @File: db_sys_client_conf.py
 '''
-from app.database import Base
+from backend.app.database import Base
 from sqlalchemy import Column, BigInteger, String, DateTime, Text, Index, Integer
 from sqlalchemy.sql import func
 

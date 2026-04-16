@@ -5,9 +5,9 @@
 '''
 
 from fastapi import Header, HTTPException
-from app.database import get_db_instance
-from app.models.db_sys_client_conf import SysClientConf
-from app.models.constants import DataEnable
+from backend.app.database import get_db_instance
+from backend.app.models.db_sys_client_conf import SysClientConf
+from backend.app.models.constants import DataEnable
 
 
 def api_key_check(accesskey: str = Header(...), accesssecret: str = Header(...)):

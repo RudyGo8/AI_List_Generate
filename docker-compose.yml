@@ -1,66 +1,100 @@
-﻿version: "3.9"
-
 services:
   mysql:
     image: mysql:8.0
     container_name: ai-list-mysql
     restart: unless-stopped
     environment:
+      TZ: ${TZ:-Asia/Shanghai}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-ai_list}
-      TZ: ${TZ:-Asia/Shanghai}
     command:
+      - --default-authentication-plugin=mysql_native_password
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
-      - --max_connections=500
     ports:
-      - "${MYSQL_PORT:-3306}:3306"
+      - "${MYSQL_PORT:-3307}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./app/sql/create_tables.sql:/docker-entrypoint-initdb.d/01_create_tables.sql:ro
-      - ./app/sql/insert_data.sql:/docker-entrypoint-initdb.d/02_insert_data.sql:ro
+      - ./backend/sql/create_tables.sql:/docker-entrypoint-initdb.d/01-create_tables.sql:ro
+      - ./backend/sql/insert_data.sql:/docker-entrypoint-initdb.d/02-insert_data.sql:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-123456}"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
       interval: 10s
       timeout: 5s
-      retries: 20
+      retries: 15
 
   redis:
     image: redis:7-alpine
     container_name: ai-list-redis
     restart: unless-stopped
     ports:
-      - "${REDIS_PORT:-6379}:6379"
-    command: ["redis-server", "--appendonly", "yes"]
-    volumes:
-      - redis_data:/data
+      - "${REDIS_PORT:-6380}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
-      timeout: 3s
-      retries: 20
+      timeout: 5s
+      retries: 10
 
   embedding:
-    image: ${EMBEDDING_IMAGE:-ghcr.io/huggingface/text-embeddings-inference:cpu-latest}
+    image: ${EMBEDDING_IMAGE:-ghcr.io/huggingface/text-embeddings-inference:cuda-1.8.1}
     container_name: ai-list-embedding
     restart: unless-stopped
-    ports:
-      - "${EMBEDDING_PORT:-8080}:80"
-    environment:
-      TZ: ${TZ:-Asia/Shanghai}
-      MODEL_ID: ${EMBEDDING_MODEL_ID:-BAAI/bge-m3}
     command:
       - --model-id
       - ${EMBEDDING_MODEL_ID:-BAAI/bge-m3}
+    ports:
+      - "${EMBEDDING_PORT:-8081}:80"
     volumes:
-      - embedding_data:/data
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:80/health || exit 1"]
-      interval: 20s
-      timeout: 5s
-      retries: 20
+      - ./data/tei:/data
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ai-list-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      embedding:
+        condition: service_started
+    env_file:
+      - ./backend/.env.compose
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+    command:
+      - sh
+      - -c
+      - uv run uvicorn app.main:app --host 0.0.0.0 --port 1235
+    ports:
+      - "${BACKEND_PORT:-1235}:1235"
+    volumes:
+      - ./backend/logs:/app/logs
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:${BACKEND_PORT:-1235}
+        VITE_ACCESS_KEY: test_key
+        VITE_ACCESS_SECRET: test_secret
+        VITE_AI_SCENE: default
+    container_name: ai-list-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
 
 volumes:
   mysql_data:
-  redis_data:
-  embedding_data:

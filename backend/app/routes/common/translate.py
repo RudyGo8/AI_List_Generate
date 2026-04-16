@@ -7,9 +7,9 @@
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
-from app.schemas.translate import TranslateRequest, BatchTranslateRequest
-from app.utils.dependencies import api_key_check
-from app.services.text_generator import service_text_translate, service_batch_text_translate
+from backend.app.schemas.translate import TranslateRequest, BatchTranslateRequest
+from backend.app.utils.dependencies import api_key_check
+from backend.app.services.text_generator import service_text_translate, service_batch_text_translate
 
 router_r1 = APIRouter(
     prefix="/api/r1/c",

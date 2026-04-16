@@ -1,7 +1,7 @@
 import json
 from typing import Any, Optional
 
-from app.config import logger, REDIS_URL
+from backend.app.config import logger, REDIS_URL
 
 try:
     import redis

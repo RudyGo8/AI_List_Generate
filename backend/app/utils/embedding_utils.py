@@ -7,11 +7,11 @@ from typing import Any, Dict, List
 
 import numpy as np
 
-from app.config import EMBEDDING_CACHE_TTL_SECONDS, logger
-from app.database import get_db_instance
-from app.models.constants import DataEnable
-from app.models.db_sys_conf import SysConf
-from app.utils.cache_utils import get_json, set_json
+from backend.app.config import EMBEDDING_CACHE_TTL_SECONDS, logger
+from backend.app.database import get_db_instance
+from backend.app.models.constants import DataEnable
+from backend.app.models.db_sys_conf import SysConf
+from backend.app.utils.cache_utils import get_json, set_json
 
 
 def _norm_text(text: str) -> str:

@@ -1,6 +1,6 @@
 ﻿from typing import List, Dict
 
-from app.utils.embedding_utils import get_embedding, batch_get_embeddings, cosine_similarity
+from backend.app.utils.embedding_utils import get_embedding, batch_get_embeddings, cosine_similarity
 
 
 # 关键词重叠度

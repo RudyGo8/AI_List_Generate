@@ -9,16 +9,16 @@ import json
 
 import requests
 
-from app.config import logger
-from app.database import get_db_instance
-from app.models.constants import DataStatus, SpecialID, BatchType, NoticeStatus
-from app.models.db_notice_detail import DbNoticeDetail
-from app.models.db_product_des_detail import ProductDesDetail
-from app.models.db_product_src_detail import ProductSrcDetail
-from app.models.db_product_task_detail import DbProductTaskDetail
-from app.services.llm import get_model_used
-from app.services.shop import shop_product_category, shop_product_bundle_text_only
-from app.utils.param_utils import list_url_to_str, usage_addition, list_to_str, filter_product_response, json_serial
+from backend.app.config import logger
+from backend.app.database import get_db_instance
+from backend.app.models.constants import DataStatus, SpecialID, BatchType, NoticeStatus
+from backend.app.models.db_notice_detail import DbNoticeDetail
+from backend.app.models.db_product_des_detail import ProductDesDetail
+from backend.app.models.db_product_src_detail import ProductSrcDetail
+from backend.app.models.db_product_task_detail import DbProductTaskDetail
+from backend.app.services.llm import get_model_used
+from backend.app.services.shop import shop_product_category, shop_product_bundle_text_only
+from backend.app.utils.param_utils import list_url_to_str, usage_addition, list_to_str, filter_product_response, json_serial
 
 
 def _get_scene_from_custom_data(custom_data):

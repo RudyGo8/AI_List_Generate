@@ -6,12 +6,12 @@
 import json
 import hashlib
 
-from app.config import logger, CATEGORY_CACHE_TTL_SECONDS
-from app.models.constants import DataEnable
-from app.models.db_sys_ai_prompt import SysAiPrompt
-from app.services.llm import chat_with_llm
-from app.utils.cache_utils import get_json, set_json
-from app.utils.similar_utils import get_category_exchange
+from backend.app.config import logger, CATEGORY_CACHE_TTL_SECONDS
+from backend.app.models.constants import DataEnable
+from backend.app.models.db_sys_ai_prompt import SysAiPrompt
+from backend.app.services.llm import chat_with_llm
+from backend.app.utils.cache_utils import get_json, set_json
+from backend.app.utils.similar_utils import get_category_exchange
 
 
 def _expand_prompt_keys(prompt_keys, scene='default'):

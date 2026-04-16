@@ -3,11 +3,11 @@
 @Author: GeChao
 @File: multimodel_generator.py
 '''
-from app.config import logger
-from app.database import get_db_instance
-from app.models.db_sys_ai_prompt import SysAiPrompt
-from app.models.constants import DataEnable
-from app.services.llm import chat_with_llm
+from backend.app.config import logger
+from backend.app.database import get_db_instance
+from backend.app.models.db_sys_ai_prompt import SysAiPrompt
+from backend.app.models.constants import DataEnable
+from backend.app.services.llm import chat_with_llm
 
 
 def _get_ocr_prompt(db_instance, scene='default'):

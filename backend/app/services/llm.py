@@ -3,11 +3,11 @@
 @Author: GeChao
 @File: llm.py
 '''
-from app.config import logger
-from app.database import get_db_instance
-from app.models.db_sys_conf import SysConf
-from app.models.constants import DataEnable, LLMType
-from app.utils.qwen_utils import ai_chat_qwen
+from backend.app.config import logger
+from backend.app.database import get_db_instance
+from backend.app.models.db_sys_conf import SysConf
+from backend.app.models.constants import DataEnable, LLMType
+from backend.app.utils.qwen_utils import ai_chat_qwen
 
 
 def _get_enabled_conf_value(db, key: str):

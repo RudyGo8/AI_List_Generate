@@ -1,9 +1,0 @@
-{"time": "2026-03-27 15:52:19,597", "name": "app.config", "level": "INFO", "message": "Request: GET http://localhost:1235/docs", "filename": "main.py", "funcName": "log_request", "lineno": 15}
-{"time": "2026-03-27 15:52:19,598", "name": "app.config", "level": "INFO", "message": "Response: 200 http://localhost:1235/docs", "filename": "main.py", "funcName": "log_request", "lineno": 17}
-{"time": "2026-03-27 15:52:19,690", "name": "app.config", "level": "INFO", "message": "Request: GET http://localhost:1235/openapi.json", "filename": "main.py", "funcName": "log_request", "lineno": 15}
-{"time": "2026-03-27 15:52:19,697", "name": "app.config", "level": "INFO", "message": "Response: 200 http://localhost:1235/openapi.json", "filename": "main.py", "funcName": "log_request", "lineno": 17}
-{"time": "2026-03-27 15:52:29,586", "name": "app.config", "level": "INFO", "message": "Request: POST http://localhost:1235/api/v1/c/batchtranslate", "filename": "main.py", "funcName": "log_request", "lineno": 15}
-{"time": "2026-03-27 15:52:29,586", "name": "app.config", "level": "INFO", "message": "Response: 404 http://localhost:1235/api/v1/c/batchtranslate", "filename": "main.py", "funcName": "log_request", "lineno": 17}
-{"time": "2026-03-27 15:52:41,389", "name": "app.config", "level": "INFO", "message": "Request: POST http://localhost:1235/api/r1/c/batchtranslate", "filename": "main.py", "funcName": "log_request", "lineno": 15}
-{"time": "2026-03-27 15:52:41,421", "name": "app.config", "level": "ERROR", "message": "'NoneType' object has no attribute 'prompt_value'", "filename": "text_generator.py", "funcName": "service_batch_text_translate", "lineno": 63}
-{"time": "2026-03-27 15:52:41,422", "name": "app.config", "level": "INFO", "message": "Response: 200 http://localhost:1235/api/r1/c/batchtranslate", "filename": "main.py", "funcName": "log_request", "lineno": 17}

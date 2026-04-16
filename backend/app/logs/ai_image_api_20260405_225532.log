@@ -1,2 +1,0 @@
-{"time": "2026-04-06 11:50:13,435", "name": "app.config", "level": "INFO", "message": "Request: OPTIONS http://localhost:1235/api/r1/shop/ailist", "filename": "main.py", "funcName": "log_request", "lineno": 17}
-{"time": "2026-04-06 11:50:13,439", "name": "app.config", "level": "INFO", "message": "Response: 405 http://localhost:1235/api/r1/shop/ailist", "filename": "main.py", "funcName": "log_request", "lineno": 19}

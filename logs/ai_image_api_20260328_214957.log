@@ -1,6 +1,0 @@
-{"time": "2026-03-28 21:50:12,817", "name": "app.config", "level": "INFO", "message": "Request: GET http://localhost:8080/docs", "filename": "main.py", "funcName": "log_request", "lineno": 17}
-{"time": "2026-03-28 21:50:12,818", "name": "app.config", "level": "INFO", "message": "Response: 200 http://localhost:8080/docs", "filename": "main.py", "funcName": "log_request", "lineno": 19}
-{"time": "2026-03-28 21:50:21,626", "name": "app.config", "level": "INFO", "message": "Request: POST http://localhost:8080/api/r1/shop/ailist", "filename": "main.py", "funcName": "log_request", "lineno": 17}
-{"time": "2026-03-28 21:50:21,629", "name": "app.config", "level": "INFO", "message": "Response: 422 http://localhost:8080/api/r1/shop/ailist", "filename": "main.py", "funcName": "log_request", "lineno": 19}
-{"time": "2026-03-28 21:51:02,957", "name": "app.config", "level": "INFO", "message": "Request: POST http://localhost:8080/api/r1/shop/ailist", "filename": "main.py", "funcName": "log_request", "lineno": 17}
-{"time": "2026-03-28 21:51:02,982", "name": "app.config", "level": "INFO", "message": "Response: 401 http://localhost:8080/api/r1/shop/ailist", "filename": "main.py", "funcName": "log_request", "lineno": 19}
