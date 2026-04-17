@@ -146,7 +146,7 @@ def set_product_des_to_db(clientId, site, platform_id, product_src_id, model_nam
 def shop_product_generate_wrapper(task_record_id, batch_no):
     session_for_thread = next(get_db_instance())
     if not task_record_id:
-        logger.info(f"task_record is None, Nothing to do")
+        logger.info("task_record is None, Nothing to do")
         return True
     task_record = session_for_thread.query(DbProductTaskDetail).filter_by(id=task_record_id).first()
     if not task_record:

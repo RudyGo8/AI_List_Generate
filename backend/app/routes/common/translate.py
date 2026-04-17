@@ -21,7 +21,6 @@ router_r1 = APIRouter(
 
 @router_r1.post("/translate")
 async def route_text_translate(request: Request, translate_req: TranslateRequest) -> JSONResponse:
-    clientId = (request.headers.get('accesskey'))
     scene = request.headers.get('x-ai-scene', 'default')
 
     des_lang_type = translate_req.des_lang_type
@@ -38,7 +37,6 @@ async def route_text_translate(request: Request, translate_req: TranslateRequest
 
 @router_r1.post("/batchtranslate")
 async def route_batch_text_translate(request: Request, batch_translate_req: BatchTranslateRequest) -> JSONResponse:
-    clientId = (request.headers.get('accesskey'))
     scene = request.headers.get('x-ai-scene', 'default')
 
     des_lang_type = batch_translate_req.des_lang_type.upper()

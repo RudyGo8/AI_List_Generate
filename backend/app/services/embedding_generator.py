@@ -1,7 +1,5 @@
 from backend.app.database import get_db_instance
-from backend.app.models.db_sys_ai_prompt import SysAiPrompt
 from backend.app.models.db_category import Category
-from backend.app.services.llm import chat_with_llm
 from backend.app.utils.embedding_utils import find_similar_categories
 
 

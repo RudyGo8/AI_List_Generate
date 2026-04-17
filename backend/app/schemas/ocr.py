@@ -3,8 +3,8 @@
 @Author: GeChao
 @File: ocr.py
 '''
-from pydantic import BaseModel, HttpUrl, Field, model_validator
-from typing import Optional, List, Dict, Any
+from pydantic import BaseModel, HttpUrl, Field
+from typing import Optional, List
 
 
 class OcrRequest(BaseModel):

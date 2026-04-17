@@ -19,7 +19,6 @@ router_r1 = APIRouter(
 
 @router_r1.post("/ocr")
 async def route_image_ocr(request: Request, ocr_req: OcrRequest):
-    clientId = (request.headers.get('accesskey'))
     scene = request.headers.get('x-ai-scene', 'default')
 
     image_url_list = ocr_req.image_url_list
