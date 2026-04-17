@@ -65,7 +65,7 @@ def get_embedding(text: str) -> List[float]:
         db.close()
 
 
-# 相似度计算
+# 相似度计算：余弦相似度
 def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
     arr1 = np.array(vec1)
     arr2 = np.array(vec2)

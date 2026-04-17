@@ -304,7 +304,6 @@ def _extract_json_payload(raw_text):
 
 
 def shop_product_bundle_text_only(product_title, category_name, attributes, des_lang_type, db_instance, scene='default'):
-
     try:
         system_prompt = _get_prompt(
             db_instance,
@@ -362,3 +361,99 @@ def shop_product_bundle_text_only(product_title, category_name, attributes, des_
     except Exception as error:
         logger.error(error)
         return None, None
+
+
+# 配合langsmith第一轮评估
+@traceable(name="shop_product_category_step1", run_type="chain")
+def shop_product_category_step1(
+        site, spu_image_url, sku_image_url_list, product_title, category_name, db_instance, scene='default'
+):
+    try:
+        system_step_one = _get_prompt(
+            db_instance,
+            'SYSTEM_COMMON_CATEGORY_STEP_ONE',
+            "You are an ecommerce category expert. Identify the best category path for this product.",
+            scene=scene
+        )
+        user_step_one_tpl = _get_prompt(
+            db_instance,
+            'USER_COMMON_CATEGORY_STEP_ONE',
+            "Product title: %s\nOriginal category: %s\n\nReturn a category path only.",
+            scene=scene
+        )
+
+        title = product_title or ""
+        cat = category_name or ""
+        try:
+            user_step_one = user_step_one_tpl % (title, cat)
+        except Exception:
+            user_step_one = f"Product title: {title}\nOriginal category: {cat}\nReturn a category path only."
+
+        image_url_list = _build_image_url_list(spu_image_url, sku_image_url_list)
+        category_path_by_ai, usage = chat_with_llm(
+            image_url_list=image_url_list,
+            user_prompt=user_step_one,
+            system_prompt=system_step_one,
+            task_type='shop_category',
+            scene=scene,
+        )
+
+        if category_path_by_ai:
+            category_list = get_category_exchange(category_path_content=category_path_by_ai, site=site)
+        else:
+            category_list = [{"category_path": "General", "category_id": "DEFAULT"}]
+
+        return category_list[:3], (category_path_by_ai or ""), usage
+    except Exception as error:
+        logger.error(error)
+        return [{"category_path": "General", "category_id": "DEFAULT"}], "", None
+
+
+# 配合langsmith第二轮评估
+@traceable(name="shop_product_category_step2", run_type="chain")
+def shop_product_category_step2(site, product_title, candidate_category_paths, db_instance, scene="default"):
+    try:
+        system_step_two = _get_prompt(
+            db_instance,
+            "SYSTEM_COMMON_CATEGORY_STEP_TWO",
+            "You are an ecommerce category expert. Pick the best match from candidates.",
+            scene=scene,
+        )
+        user_step_two_tpl = _get_prompt(
+            db_instance,
+            "USER_COMMON_CATEGORY_STEP_TWO",
+            "Product title: %s\nCandidate categories: %s\n\nReturn the best category path only.",
+            scene=scene,
+        )
+
+        title = product_title or ""
+        candidate_paths = [str(x).strip() for x in (candidate_category_paths or []) if str(x).strip()]
+        if not candidate_paths:
+            return {"category_path": "General", "category_id": "DEFAULT"}, "", None
+
+        category_list_str = ", ".join(candidate_paths)
+        try:
+            user_step_two = user_step_two_tpl % (title, category_list_str)
+        except Exception:
+            user_step_two = f"Product title: {title}\nCandidate categories: {category_list_str}\nReturn the best category path only."
+
+        category_path_by_ai_step2, usage = chat_with_llm(
+            image_url_list=None,
+            user_prompt=user_step_two,
+            system_prompt=system_step_two,
+            task_type="shop_category",
+            scene=scene,
+        )
+
+        if category_path_by_ai_step2:
+            ranked = get_category_exchange(category_path_content=category_path_by_ai_step2, site=site)
+        else:
+            ranked = [{"category_path": "General", "category_id": "DEFAULT"}]
+
+        top3 = [dict(x) for x in (ranked[:3] if ranked else [{"category_path": "General", "category_id": "DEFAULT"}])]
+        result = dict(top3[0]) if top3 else {"category_path": "General", "category_id": "DEFAULT"}
+        result["top3_candidates"] = top3
+        return result, (category_path_by_ai_step2 or ""), usage
+    except Exception as error:
+        logger.error(error)
+        return {"category_path": "General", "category_id": "DEFAULT"}, "", None
