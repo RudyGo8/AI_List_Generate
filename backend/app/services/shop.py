@@ -12,6 +12,7 @@ from backend.app.models.db_sys_ai_prompt import SysAiPrompt
 from backend.app.services.llm import chat_with_llm
 from backend.app.utils.cache_utils import get_json, set_json
 from backend.app.utils.similar_utils import get_category_exchange
+from langsmith import traceable
 
 
 def _expand_prompt_keys(prompt_keys, scene='default'):
@@ -65,6 +66,7 @@ def _build_category_cache_key(site, scene, product_title, spu_image_url, categor
     return f"ailist:cat:v1:{digest}"
 
 
+@traceable(name="shop_product_category", run_type="chain")
 def shop_product_category(site, spu_image_url, sku_image_url_list, product_title, category_name, db_instance, scene='default'):
     try:
         # redis 缓存

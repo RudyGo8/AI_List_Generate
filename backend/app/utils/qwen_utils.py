@@ -9,6 +9,7 @@ from backend.app.config import logger
 from backend.app.database import get_db_instance
 from backend.app.models.db_sys_conf import SysConf
 from backend.app.models.constants import DataEnable
+from langsmith.wrappers import wrap_openai
 
 ''' 调用qwen模型 '''
 
@@ -25,9 +26,11 @@ def ai_chat_qwen(image_url_list, user_prompt, system_prompt=None, model_override
         ai_base_url_qwen = db.query(SysConf).filter_by(key='AI_BASE_URL_QWEN', enable=DataEnable.ON.value).first().value
         ai_api_key_qwen = db.query(SysConf).filter_by(key='AI_APIKEY_QWEN', enable=DataEnable.ON.value).first().value
 
-        client = OpenAI(
-            api_key=ai_api_key_qwen,
-            base_url=ai_base_url_qwen
+        client = wrap_openai(
+            OpenAI(
+                api_key=ai_api_key_qwen,
+                base_url=ai_base_url_qwen
+            )
         )
 
         user_content = []

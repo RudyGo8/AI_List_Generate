@@ -8,6 +8,7 @@ from backend.app.database import get_db_instance
 from backend.app.models.db_sys_conf import SysConf
 from backend.app.models.constants import DataEnable, LLMType
 from backend.app.utils.qwen_utils import ai_chat_qwen
+from langsmith import traceable
 
 
 def _get_enabled_conf_value(db, key: str):
@@ -39,7 +40,6 @@ def _get_route_model(db, task_type: str, scene: str = 'default'):
                 'model_name': route.model_name,
             }
     except Exception as error:
-        # Compatible with environments where db_ai_model_route table is not created yet.
         logger.info(f'route model unavailable, fallback to sys_conf: {error}')
 
     llm_type = _get_enabled_conf_value(db, 'LLM_TYPE') or LLMType.QWEN.value
@@ -52,6 +52,7 @@ def _get_route_model(db, task_type: str, scene: str = 'default'):
     }
 
 
+@traceable(name="chat_with_llm", run_type="chain")
 def chat_with_llm(image_url_list, user_prompt, system_prompt=None, task_type='general', scene='default'):
     db = None
     try:

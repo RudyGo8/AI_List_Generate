@@ -9,6 +9,7 @@ from backend.app.models.db_sys_ai_prompt import SysAiPrompt
 from backend.app.models.constants import DataEnable
 from backend.app.services.llm import chat_with_llm
 from backend.app.utils.param_utils import extract_list
+from langsmith import traceable
 
 
 def _build_prompt_keys(prompt_key: str, scene: str = 'default'):
@@ -28,6 +29,7 @@ def _get_prompt_value(db_instance, prompt_key: str, scene: str = 'default'):
     return None
 
 
+@traceable(name="service_text_translate", run_type="chain")
 def service_text_translate(des_lang_type, content, scene='default') -> (str, dict):
     db_instance = next(get_db_instance())
 
@@ -55,6 +57,7 @@ def service_text_translate(des_lang_type, content, scene='default') -> (str, dic
         db_instance.close()
 
 
+@traceable(name="service_batch_text_translate", run_type="chain")
 def service_batch_text_translate(des_lang_type, content_list, scene='default') -> (list, dict):
     db_instance = next(get_db_instance())
 
