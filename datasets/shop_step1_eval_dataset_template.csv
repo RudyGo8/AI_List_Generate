@@ -1,6 +1,6 @@
 site,scene,spu_image_url,product_title,ref_step1_category_id,ref_step1_category_path
-shop,default,https://github.com/RudyGo8/AI_List_Generate/blob/master/datasets/iphone.png?raw=true,Apple iPhone,300002,  Electronics > Mobile Phones > Smartphones
-shop,default,https://github.com/RudyGo8/AI_List_Generate/blob/master/datasets/jacket.png?raw=true,jacket,400023,Fashion > Women Clothing > Jackets
-shop,default,https://github.com/RudyGo8/AI_List_Generate/blob/master/datasets/keyboard.png?raw=true,keyboard,600011,Electronics > Accessories > Keyboards
-shop,default,https://github.com/RudyGo8/AI_List_Generate/blob/master/datasets/memory_bank.png?raw=true,memory_bank,400101,Electronics > Computer Components > Memory (RAM)
-shop,promo,https://github.com/RudyGo8/AI_List_Generate/blob/master/datasets/sunglasses.png?raw=true,sunglasses,600051,Fashion > Accessories > Sunglasses
+shop,default,https://github.com/RudyGo8/AI_List_Generate/blob/master/datasets/iphone.png?raw=true,Apple iPhone,100003,  Electronics > Mobile Phones > Smartphones
+shop,default,https://github.com/RudyGo8/AI_List_Generate/blob/master/datasets/jacket.png?raw=true,jacket,200003,Fashion > Women Clothing > Jackets
+shop,default,https://github.com/RudyGo8/AI_List_Generate/blob/master/datasets/keyboard.png?raw=true,keyboard,100103,Electronics > Accessories > Keyboards
+shop,default,https://github.com/RudyGo8/AI_List_Generate/blob/master/datasets/memory_bank.png?raw=true,memory_bank,200103,Electronics > Computer Components > Memory (RAM)
+shop,promo,https://github.com/RudyGo8/AI_List_Generate/blob/master/datasets/sunglasses.png?raw=true,sunglasses,300003,Fashion > Accessories > Sunglasses

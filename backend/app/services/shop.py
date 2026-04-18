@@ -13,6 +13,8 @@ from backend.app.services.llm import chat_with_llm
 from backend.app.utils.cache_utils import get_json, set_json
 from backend.app.utils.similar_utils import get_category_exchange
 from langsmith import traceable
+from backend.app.models.db_category import Category
+from backend.app.utils.str_text_utils import norm_path
 
 
 def _expand_prompt_keys(prompt_keys, scene='default'):
@@ -77,7 +79,7 @@ def shop_product_category(site, spu_image_url, sku_image_url_list, product_title
             return cache_hit, None
         logger.info(f"category_cache_miss key={cache_key}")
 
-        # 第一步类目推理（多模态）
+        # 第一步类目推理（多模态大模型）
         system_step_one = _get_prompt(
             db_instance,
             'SYSTEM_COMMON_CATEGORY_STEP_ONE',
@@ -112,7 +114,7 @@ def shop_product_category(site, spu_image_url, sku_image_url_list, product_title
         else:
             category_list = [{"category_path": "General", "category_id": "DEFAULT"}]
 
-        # 第二步类目重排（文本）
+        # 第二步类目重排（文本模型）
         system_step_two = _get_prompt(
             db_instance,
             'SYSTEM_COMMON_CATEGORY_STEP_TWO',
@@ -141,20 +143,39 @@ def shop_product_category(site, spu_image_url, sku_image_url_list, product_title
                 scene=scene,
             )
             usage = usage_step2 if usage_step2 else usage
+
             if category_path_by_ai_step2:
-                category_list = get_category_exchange(category_path_content=category_path_by_ai_step2, site=site)
+                def _norm_path(v: str) -> str:
+                    text = str(v or "").strip().lower().replace("/", ">")
+                    parts = [p.strip() for p in text.split(">") if p.strip()]
+                    return " > ".join(parts)
 
-        if not category_list:
-            category_list = [{"category_path": "General", "category_id": "DEFAULT"}]
+                out_norm = _norm_path(category_path_by_ai_step2)
+                # 命中
+                hit_idx = None
+                for idx, item in enumerate(category_list):
+                    cand_norm = _norm_path(item.get("category_path", ""))
+                    if cand_norm == out_norm or (cand_norm and cand_norm in out_norm):
+                        hit_idx = idx
+                        break
 
-        result = category_list[0]
+                if hit_idx is not None:
+                    category_list = [category_list[hit_idx]] + [
+                        x for i, x in enumerate(category_list) if i != hit_idx
+                    ]
+
+        top3 = [dict(x) for x in category_list[:3]]
+        result = dict(top3[0]) if top3 else {"category_path": "General", "category_id": "DEFAULT"}
+        result["top3_candidates"] = top3
         set_json(cache_key, result, ttl_seconds=CATEGORY_CACHE_TTL_SECONDS)
 
         logger.info(category_list)
         return result, usage
     except Exception as error:
         logger.error(error)
-        return {"category_path": "General", "category_id": "DEFAULT"}, None
+        default_result = {"category_path": "General", "category_id": "DEFAULT"}
+        default_result["top3_candidates"] = [dict(default_result)]
+        return default_result, None
 
 
 def shop_product_title(spu_image_url, sku_image_url_list, product_title, category_name, des_lang_type, db_instance, scene='default'):
@@ -435,7 +456,7 @@ def shop_product_category_step2(site, product_title, candidate_category_paths, d
         try:
             user_step_two = user_step_two_tpl % (title, category_list_str)
         except Exception:
-            user_step_two = f"Product title: {title}\nCandidate categories: {category_list_str}\nReturn the best category path only."
+            user_step_two = f"Product title: {title}\nCandidate categories: {category_list_str}\nReturn the best category path only.No explanation."
 
         category_path_by_ai_step2, usage = chat_with_llm(
             image_url_list=None,
@@ -444,16 +465,28 @@ def shop_product_category_step2(site, product_title, candidate_category_paths, d
             task_type="shop_category",
             scene=scene,
         )
+        raw_norm = norm_path(category_path_by_ai_step2)
+        chosen_path = next((p for p in candidate_paths if norm_path(p) in raw_norm), candidate_paths[0])
 
-        if category_path_by_ai_step2:
-            ranked = get_category_exchange(category_path_content=category_path_by_ai_step2, site=site)
-        else:
-            ranked = [{"category_path": "General", "category_id": "DEFAULT"}]
+        rows = db_instance.query(Category.category_path, Category.category_id).filter(
+            Category.site == site,
+            Category.enable == DataEnable.ON.value,
+            Category.category_path.in_(candidate_paths),
+        ).all()
+        id_map = {p: str(cid) for p, cid in rows}
 
-        top3 = [dict(x) for x in (ranked[:3] if ranked else [{"category_path": "General", "category_id": "DEFAULT"}])]
-        result = dict(top3[0]) if top3 else {"category_path": "General", "category_id": "DEFAULT"}
+        top3 = [{"category_path": p, "category_id": id_map.get(p, "DEFAULT")} for p in candidate_paths]
+        i = candidate_paths.index(chosen_path)
+        if i != 0:
+            top3 = [top3[i]] + top3[:i] + top3[i + 1:]
+        result = dict(top3[0])
         result["top3_candidates"] = top3
+
         return result, (category_path_by_ai_step2 or ""), usage
     except Exception as error:
         logger.error(error)
-        return {"category_path": "General", "category_id": "DEFAULT"}, "", None
+        return {
+            "category_path": "General",
+            "category_id": "DEFAULT",
+            "top3_candidates": [],
+        }, "", None

@@ -57,6 +57,13 @@ def level_score(inputs, outputs, reference_outputs):
     return hit / len(ref)
 
 
+# Top1 准确率
+def top1_id_exact_match(inputs, outputs, reference_outputs):
+    pred_id = str(outputs.get("pred_category_id") or "").strip().lower()
+    ref_id = str(reference_outputs.get("ref_step1_category_id") or "").strip().lower()
+    return bool(pred_id and ref_id and pred_id == ref_id)
+
+
 # 正确答案的类目 ID 有没有出现在 Top3 候选里
 def top3_hit(inputs, outputs, reference_outputs):
     ref_id = str(reference_outputs.get("ref_step1_category_id") or "").strip()
@@ -76,9 +83,10 @@ if __name__ == "__main__":
         target_step1,
         data=dataset_name,
         evaluators=[exact_match, level_score, top3_hit,
-                    raw_path_non_empty, ],
+                    raw_path_non_empty,
+                    top1_id_exact_match],
         experiment_prefix="ai_list_generate_shop_step1_eval_experiment",
-        max_concurrency=4,
+        max_concurrency=10,
         blocking=True,
     )
     print(results)

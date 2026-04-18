@@ -79,3 +79,5 @@ def get_product(product_url):
     product_info = product_crawler(product_url)
     print("product_info:", product_info)
     return fetch_product(product_info)
+
+

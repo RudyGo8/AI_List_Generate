@@ -1,2 +1,6 @@
-﻿site,scene,product_title,candidate_category_paths,ref_step2_category_id,ref_step2_category_path
-shop,default,Apple iPhone,"""[""电子 > 手机"",""Electronics > Mobile Phones > Smartphones"", ""电子""]""",300002,Electronics > Mobile Phones > Smartphones
+site,scene,product_title,candidate_category_paths,ref_step2_category_id,ref_step2_category_path
+shop,default,Apple iPhone,"""[""Electronics > Mobile Phones > Feature Phones"",""Electronics > Mobile Phones > Smartphones"", ""Electronics > Mobile Phones > Foldable Phones""]""",100003,Electronics > Mobile Phones > Smartphones
+shop,default,memory_bank,"""[""Electronics > Computer Components > Memory (RAM)"",""Electronics > Computer Components > Solid State Drives (SSD)"", ""Electronics > Computer Components > Hard Disk Drives (HDD)""]""",200103,Electronics > Computer Components > Memory (RAM)
+shop,default,jacket,"""[""Fashion > Women Clothing > Jackets"",""Fashion > Accessories > Fashion Belts"", ""Fashion > Women Clothing > Coats""]""",200003,Fashion > Women Clothing > Jackets
+shop,default,keyboard,"""[""Electronics > Accessories > Keyboards"",""Electronics > Accessories > Chargers"", ""Electronics > Accessories > Cables""]""",100103,Electronics > Accessories > Keyboards
+shop,default,sunglasses,"""[""Fashion > Accessories > Sunglasses"",""Fashion > Accessories > Sports Sunglasses"", ""Fashion > Accessories > Eyeglasses""]""",300003,Fashion > Accessories > Sunglasses
