@@ -8,9 +8,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.app.routes.common.translate import router_r1 as translate_router_r1
 from backend.app.routes.common.ocr import router_r1 as ocr_router_r1
 from backend.app.routes.shop.ailist import router_r1 as shop_router_r1
-from backend.app.config import logger
+from backend.app.config import logger, APP_VERSION
 
-app = FastAPI()
+app = FastAPI(
+    title="ai-list-generate-backend",
+    version=APP_VERSION,
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -33,6 +36,9 @@ async def log_request(request: Request, call_next):
     logger.info(f"Response: {response.status_code} {request.url}")
     return response
 
+@app.get("/api/r1/meta/version", tags=["meta"])
+async def route_version():
+  return {"success": True, "msg": "success", "data": {"version": APP_VERSION}}
 
 app.include_router(shop_router_r1)
 app.include_router(translate_router_r1)

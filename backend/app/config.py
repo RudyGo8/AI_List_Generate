@@ -9,6 +9,20 @@ import os
 from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
+import tomllib
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _read_project_version(default: str = "0.1.0") -> str:
+    pyproject_file = PROJECT_ROOT / "pyproject.toml"
+    try:
+        data = tomllib.loads(pyproject_file.read_text(encoding="utf-8"))
+        return data.get("project", {}).get("version", default)
+    except Exception:
+        return default
+
+APP_VERSION = os.getenv("APP_VERSION", _read_project_version())
 
 
 def _load_env_file(env_path: Path):
