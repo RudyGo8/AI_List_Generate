@@ -1,0 +1,1 @@
+{"default":{"features":{"text1":{"_type":"Value"},"text2":{"_type":"Value"}},"splits":{"test":{"name":"test","dataset_name":"product_description_generation"}}}}
