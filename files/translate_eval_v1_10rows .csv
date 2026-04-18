@@ -1,0 +1,11 @@
+﻿content,des_lang_type,scene,expected_translation,case_type,difficulty
+这款便携式榨汁杯支持USB充电，适合办公室和旅行使用。,English,default,This portable blender cup supports USB charging and is suitable for office use and travel.,product_desc,easy
+本商品为两件套装，包含上衣和短裤，不单独拆卖。,English,default,"This product is a two-piece set including a top and shorts, and is not sold separately.",product_desc,easy
+图片仅供参考，具体颜色请以实际收到的商品为准。,English,default,Images are for reference only. Please refer to the actual product received for the exact color.,ecommerce,medium
+如需批量采购，请联系客服获取最新报价和交货周期。,English,default,"If you need to purchase in bulk, please contact customer service for the latest quotation and lead time.",business_notice,medium
+本产品不含电池，运输过程中请勿靠近高温或明火。,English,default,This product does not include batteries. Keep it away from high temperatures or open flames during transportation.,warning,medium
+尺码为手工测量，存在1到3厘米误差属于正常范围。,English,default,"The size is measured manually, and an error of 1 to 3 cm is within the normal range.",size_notice,easy
+该面料具有良好的透气性和弹性，适合春夏季节穿着。,English,default,"This fabric has good breathability and elasticity, making it suitable for spring and summer wear.",material_desc,easy
+默认发货规格为美规插头，如需欧规请在下单时备注。,English,default,"The default shipping specification is a US plug. If you need an EU plug, please leave a note when placing the order.",spec_notice,hard
+支持一件代发和OEM定制，具体细节欢迎来图来样咨询。,English,default,Dropshipping and OEM customization are supported. You are welcome to contact us with your drawings or samples for details.,business_notice,hard
+订单付款后48小时内发出，节假日期间物流时效可能会有所延迟。,English,default,Orders will be shipped within 48 hours after payment. Delivery times may be delayed during holidays.,logistics_notice,medium
