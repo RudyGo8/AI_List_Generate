@@ -301,5 +301,6 @@ docker compose down
 
 ## License
 
-本项目采用 MIT License 开源。  
+本项目采用 Apache License 2.0 开源。  
+你可以在遵守许可证条款的前提下使用、修改和分发本项目。  
 具体请参见仓库根目录下的 [LICENSE](./LICENSE) 文件。

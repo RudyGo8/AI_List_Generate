@@ -301,5 +301,6 @@ This branching strategy makes it easier to compare functionality, trace issues, 
 
 ## License
 
-This project is open-sourced under the MIT License.  
+This project is licensed under the Apache License 2.0.  
+You may use, modify, and distribute this project in compliance with the license terms.  
 See the [LICENSE](./LICENSE) file for details.
