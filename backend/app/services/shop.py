@@ -374,6 +374,7 @@ def shop_product_bundle_text_only(product_title, category_name, attributes, des_
         else:
             attributes_out = str(attributes_out)
 
+        # 返回标题、描述、属性
         return {
             "product_title": str(product_title_out),
             "product_desc": str(product_desc_out),
