@@ -14,6 +14,7 @@ class DataEnable(Enum):
 class LLMType(Enum):
     QWEN = 'QWEN'
     GEMINI = 'GEMINI'
+    SFT_LOCAL = 'SFT_LOCAL'
 
 
 class DataStatus(Enum):

@@ -36,9 +36,11 @@ async def log_request(request: Request, call_next):
     logger.info(f"Response: {response.status_code} {request.url}")
     return response
 
+
 @app.get("/api/r1/meta/version", tags=["meta"])
 async def route_version():
-  return {"success": True, "msg": "success", "data": {"version": APP_VERSION}}
+    return {"success": True, "msg": "success", "data": {"version": APP_VERSION}}
+
 
 app.include_router(shop_router_r1)
 app.include_router(translate_router_r1)

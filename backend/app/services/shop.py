@@ -178,6 +178,7 @@ def shop_product_category(site, spu_image_url, sku_image_url_list, product_title
         return default_result, None
 
 
+# 切换lora模型
 def shop_product_title(spu_image_url, sku_image_url_list, product_title, category_name, des_lang_type, db_instance, scene='default'):
     try:
         system_product_title = _get_prompt(

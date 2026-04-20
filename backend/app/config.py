@@ -22,6 +22,7 @@ def _read_project_version(default: str = "0.1.0") -> str:
     except Exception:
         return default
 
+
 APP_VERSION = os.getenv("APP_VERSION", _read_project_version())
 
 
@@ -46,10 +47,10 @@ def _load_env_file(env_path: Path):
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 # 切换docker环境
 for env_candidate in (
-    # PROJECT_ROOT / ".env.compose",
-    PROJECT_ROOT / ".env",
-    # PROJECT_ROOT.parent / ".env.compose",
-    PROJECT_ROOT.parent / ".env",
+        # PROJECT_ROOT / ".env.compose",
+        PROJECT_ROOT / ".env",
+        # PROJECT_ROOT.parent / ".env.compose",
+        PROJECT_ROOT.parent / ".env",
 ):
     _load_env_file(env_candidate)
 
@@ -125,4 +126,3 @@ if __name__ == '__main__':
     test_logger.error("This is an error log message.")
 
     print("鏃ュ織宸插啓鍏?test_log.log")
-
