@@ -35,4 +35,12 @@ The project has been upgraded to **v2-iteration**.
 - Stable category selection pipeline
 - Site-style listing generation in the final round
 - Unified output structure for title, description, and attributes
->>>>>>> f03173d (add lora)
+
+## License
+
+This project is licensed under the Apache License 2.0.
+See [LICENSE](LICENSE) for details.
+
+Note: Some third-party models, datasets, and adapter weights may have their own
+licenses and usage restrictions. Please review those terms before commercial use.
+

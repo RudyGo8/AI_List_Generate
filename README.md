@@ -35,4 +35,11 @@ For detailed docs:
 
 - Chinese: [README.zh-CN.md](README.zh-CN.md)
 - English: [README_EN.md](README_EN.md)
->>>>>>> f03173d (add lora)
+
+## License
+
+This project is licensed under the Apache License 2.0.
+See [LICENSE](LICENSE) for details.
+
+Note: Some third-party models, datasets, and adapter weights may have their own
+licenses and usage restrictions. Please check them before commercial use.
