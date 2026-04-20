@@ -12,6 +12,7 @@ backend/logs/
 backend/_trash/
 backend/tests/api/logs/
 backend/tests/api/**/__pycache__/
+backend/sft/sft_json/
 
 frontend/node_modules/
 frontend/dist/
