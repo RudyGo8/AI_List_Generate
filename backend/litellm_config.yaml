@@ -1,0 +1,24 @@
+model_list:
+    - model_name: qwen-vl-max-latest
+      litellm_params:
+        model: openai/qwen-vl-max-latest
+        api_base: https://dashscope.aliyuncs.com/compatible-mode/v1
+        api_key: xxxx
+
+    - model_name: shopee
+      litellm_params:
+        model: openai/shopee
+        api_base: http://127.0.0.1:8000/v1
+        api_key: EMPTY
+
+    - model_name: tiktok
+      litellm_params:
+        model: openai/tiktok
+        api_base: http://127.0.0.1:8000/v1
+        api_key: EMPTY
+
+    - model_name: amazon
+      litellm_params:
+        model: openai/amazon
+        api_base: http://127.0.0.1:8000/v1
+        api_key: EMPTY
