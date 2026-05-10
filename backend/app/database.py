@@ -15,7 +15,7 @@ pymysql.install_as_MySQLdb()
 # 构建数据库连接URL
 SQLALCHEMY_DATABASE_URL = f"mysql://{MYSQL_USERNAME}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}?charset=utf8mb4"
 
-# 连接池
+# 创建数据库引擎
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
     echo=False,
@@ -26,11 +26,13 @@ engine = create_engine(
     pool_pre_ping=True
 )
 
+# Session工厂
 sessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+# ORM基类
 Base = declarative_base()
 
-
+# 依赖注入：数据库会话
 def get_db_instance():
     db = sessionLocal()
     try:

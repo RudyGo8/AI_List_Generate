@@ -9,7 +9,7 @@ from backend.app.database import get_db_instance
 from backend.app.models.db_sys_client_conf import SysClientConf
 from backend.app.models.constants import DataEnable
 
-
+# 依赖注入验证key
 def api_key_check(accesskey: str = Header(...), accesssecret: str = Header(...)):
     db = next(get_db_instance())
 

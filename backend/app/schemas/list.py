@@ -6,7 +6,7 @@
 from pydantic import BaseModel, HttpUrl, Field, model_validator
 from typing import Optional, List
 
-
+# Field 默认值
 class ListGenerateRequest(BaseModel):
     site: str = Field(None, description="Site ID")
     platform_id: Optional[int] = Field(-1, description="Platform ID")

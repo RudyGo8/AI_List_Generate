@@ -1,5 +1,5 @@
 ﻿'''
-@create_time: 2026/3/28 上午10:27
+@create_time: 2025/5/28 上午10:27
 @Author: GeChao
 @File: ailist.py
 '''
@@ -43,7 +43,7 @@ def _merge_scene_to_custom_data(custom_data, scene):
     payload['ai_scene'] = scene
     return json.dumps(payload, ensure_ascii=False)
 
-
+# AI列表接口
 @router_r1.post("/ailist")
 async def routes_shop_ailist(request: Request, list_generate_req: ListGenerateRequest, background_tasks: BackgroundTasks):
     clientId = (request.headers.get('accesskey'))
@@ -95,7 +95,7 @@ async def routes_shop_ailist(request: Request, list_generate_req: ListGenerateRe
     if not res:
         return CommonResponse(success=False, msg='task create fail')
 
-    # 异步执行
+    # 后台任务
     background_tasks.add_task(shop_product_generate_wrapper, task_id, None)
     ret_data = {
         'task_id': task_id,
