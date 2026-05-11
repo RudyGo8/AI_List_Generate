@@ -55,6 +55,7 @@ async def routes_shop_ailist(request: Request, list_generate_req: ListGenerateRe
     des_lang_type = list_generate_req.des_lang_type
 
     product_url = list_generate_req.product_url
+    # 如果传了 product_url, 就去调用爬虫接口把商品数据源抓出来
     if product_url:
         product_data = get_product(product_url=product_url)
         if not product_data:
@@ -67,6 +68,7 @@ async def routes_shop_ailist(request: Request, list_generate_req: ListGenerateRe
         attributes = product_data.get('attributes', None)
         custom_data = product_data.get('custom_data', None)
     else:
+        # 用请求体里传的 spu_image_url、product_title
         spu_image_url = list_generate_req.spu_image_url
         sku_image_url_list = list_generate_req.sku_image_url_list
         product_title = list_generate_req.product_title
@@ -95,7 +97,7 @@ async def routes_shop_ailist(request: Request, list_generate_req: ListGenerateRe
     if not res:
         return CommonResponse(success=False, msg='task create fail')
 
-    # 后台任务
+    # 任务提交完成后，返回前端的后台任务
     background_tasks.add_task(shop_product_generate_wrapper, task_id, None)
     ret_data = {
         'task_id': task_id,
@@ -104,7 +106,7 @@ async def routes_shop_ailist(request: Request, list_generate_req: ListGenerateRe
     }
     return CommonResponse(success=True, msg='task created success', data=ret_data)
 
-
+# 前端来查任务处理状态
 @router_r1.get("/ailist/task/{task_id}")
 async def routes_shop_ailist_task(task_id: int):
     task_status, product_des_record, usage, model_name = get_product_des_by_task(task_id=task_id)
@@ -118,6 +120,7 @@ async def routes_shop_ailist_task(task_id: int):
     if product_des_record:
         data.update(filter_product_response(response_content=product_des_record.to_dict()) or {})
 
+    # 数据库里面字符串转为字典
     usage_dict = json.loads(usage) if usage else None
 
     if task_status == DataStatus.FAIL.value:

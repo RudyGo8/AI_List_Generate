@@ -15,7 +15,7 @@ def _keyword_overlap_score(query: str, text: str) -> float:
     return len(q_terms & t_terms) / max(len(q_terms), 1)
 
 
-# 改为BM25
+# 分词：字符串转列表
 def _tokenize(text: str) -> list[str]:
     text = (text or "").lower().replace(">", " ").replace("/", " ")
     return re.findall(r"[a-z0-9\u4e00-\u9fff]+", text)
@@ -34,7 +34,7 @@ def _bm25_score(query_tokens, tf, doc_len, avgdl, n_docs, df_map, k1=1.2, b=0.75
     return score
 
 
-# 类目混合排序，返回top3
+# 混合检索
 def rank_categories_hybrid(query_text: str, category_list: List[Dict], top_k: int = 3) -> List[Dict]:
     if not category_list:
         return []
@@ -43,22 +43,26 @@ def rank_categories_hybrid(query_text: str, category_list: List[Dict], top_k: in
     doc_tokens_list = [_tokenize(item.get('category_path', '')) for item in category_list]
 
     n_docs = len(doc_tokens_list)
-    avgdl = sum(len(toks) for toks in doc_tokens_list) / max(n_docs, 1)
+    # 平均每个分类路径分词后的长度
+    avg_doc_len = sum(len(toks) for toks in doc_tokens_list) / max(n_docs, 1)
 
+    # DF 文档频率：一个词出现在多少个分类里
     df_map = {}
     for toks in doc_tokens_list:
         for tok in set(toks):
             df_map[tok] = df_map.get(tok, 0) + 1
 
+    # BM25 分数
     bm25_raw_scores = []
     for toks in doc_tokens_list:
+        # 统计词频
         tf = Counter(toks)
         bm25_raw_scores.append(
             _bm25_score(
                 query_tokens=query_tokens,
                 tf=tf,
                 doc_len=len(toks),
-                avgdl=avgdl,
+                avgdl=avg_doc_len,
                 n_docs=n_docs,
                 df_map=df_map,
             )
@@ -67,6 +71,7 @@ def rank_categories_hybrid(query_text: str, category_list: List[Dict], top_k: in
     bm25_min = min(bm25_raw_scores) if bm25_raw_scores else 0.0
     bm25_max = max(bm25_raw_scores) if bm25_raw_scores else 0.0
 
+    # 分数归一化
     def _bm25_norm(v: float) -> float:
         if bm25_max - bm25_min < 1e-12:
             return 0.0
@@ -88,6 +93,7 @@ def rank_categories_hybrid(query_text: str, category_list: List[Dict], top_k: in
         # score = emb_score * 0.8 + key_score * 0.2
 
         bm25_raw = bm25_raw_scores[index]
+        # 归一化
         bm25_norm = _bm25_norm(bm25_raw)
         emb_norm = (emb_score + 1.0) / 2.0
 
@@ -101,3 +107,10 @@ def rank_categories_hybrid(query_text: str, category_list: List[Dict], top_k: in
 
     ranked.sort(key=lambda x: x.get('score', 0), reverse=True)
     return ranked[:top_k]
+
+
+if __name__ == '__main__':
+    list = "abcd>1,1/,2//"
+    print(f"list: {list}")
+    new_list =_tokenize(list)
+    print(f"new_list: {new_list}")

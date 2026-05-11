@@ -65,7 +65,7 @@ def list_to_str(list_data):
     else:
         return list_data
 
-
+# 数据库对象转为字典，移除下列字段
 def filter_product_response(response_content: dict = None):
     if not response_content:
         return None

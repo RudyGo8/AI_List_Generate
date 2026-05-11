@@ -55,7 +55,7 @@ def _build_image_url_list(spu_image_url, sku_image_url_list):
 def _norm_text(value):
     return (str(value) if value is not None else "").strip().lower()
 
-
+# redis 缓存 Key ，生成唯一缓存标识
 def _build_category_cache_key(site, scene, product_title, spu_image_url, category_name):
     raw = "|".join([
         _norm_text(site),
@@ -71,7 +71,7 @@ def _build_category_cache_key(site, scene, product_title, spu_image_url, categor
 @traceable(name="shop_product_category", run_type="chain")
 def shop_product_category(site, spu_image_url, sku_image_url_list, product_title, category_name, db_instance, scene='default'):
     try:
-        # redis 缓存
+        # 根据商品信息生成redis key，用key查询缓存，查到了就返回缓存结果
         cache_key = _build_category_cache_key(site, scene, product_title, spu_image_url, category_name)
         cache_hit = get_json(cache_key)
         if cache_hit and isinstance(cache_hit, dict):
@@ -109,6 +109,7 @@ def shop_product_category(site, spu_image_url, sku_image_url_list, product_title
             scene=scene,
         )
 
+        # 模型生成的与数据库站点类目检索召回
         if category_path_by_ai:
             category_list = get_category_exchange(category_path_content=category_path_by_ai, site=site)
         else:
@@ -128,9 +129,11 @@ def shop_product_category(site, spu_image_url, sku_image_url_list, product_title
             scene=scene
         )
 
+        # 拼接成字符串格式化
         category_list_str = ", ".join([item.get('category_path', '') for item in category_list if item.get('category_path')])
         if category_list_str:
             try:
+                # 发给模型的用户提示词
                 user_step_two = user_step_two_tpl % (title, category_list_str)
             except Exception:
                 user_step_two = f"Product title: {title}\nCandidate categories: {category_list_str}\nReturn the best category path only."
@@ -145,28 +148,29 @@ def shop_product_category(site, spu_image_url, sku_image_url_list, product_title
             usage = usage_step2 if usage_step2 else usage
 
             if category_path_by_ai_step2:
+                # 标准化输出
                 def _norm_path(v: str) -> str:
                     text = str(v or "").strip().lower().replace("/", ">")
                     parts = [p.strip() for p in text.split(">") if p.strip()]
                     return " > ".join(parts)
 
                 out_norm = _norm_path(category_path_by_ai_step2)
-                # 命中
+                # 第二步类目重排的结果与第一步的候选类目进行匹配
                 hit_idx = None
                 for idx, item in enumerate(category_list):
                     cand_norm = _norm_path(item.get("category_path", ""))
                     if cand_norm == out_norm or (cand_norm and cand_norm in out_norm):
                         hit_idx = idx
                         break
-
+                # 命中放到第一位
                 if hit_idx is not None:
-                    category_list = [category_list[hit_idx]] + [
-                        x for i, x in enumerate(category_list) if i != hit_idx
-                    ]
+                    category_list = [category_list[hit_idx]] + [x for i, x in enumerate(category_list) if i != hit_idx ]
 
         top3 = [dict(x) for x in category_list[:3]]
+        # 取top1作为最后结果
         result = dict(top3[0]) if top3 else {"category_path": "General", "category_id": "DEFAULT"}
         result["top3_candidates"] = top3
+        # 把结果写入redis缓存
         set_json(cache_key, result, ttl_seconds=CATEGORY_CACHE_TTL_SECONDS)
 
         logger.info(category_list)

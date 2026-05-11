@@ -52,6 +52,7 @@ def _get_route_model(db, task_type: str, scene: str = 'default'):
     }
 
 
+# 调用模型
 @traceable(name="chat_with_llm", run_type="chain")
 def chat_with_llm(image_url_list, user_prompt, system_prompt=None, task_type='general', scene='default'):
     db = None

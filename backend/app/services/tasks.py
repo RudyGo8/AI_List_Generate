@@ -1,5 +1,5 @@
 ﻿'''
-@create_time: 2026/3/28 涓婂崍11:10
+@create_time: 2026/3/28
 @Author: GeChao
 @File: tasks.py
 '''
@@ -51,6 +51,7 @@ def set_product_src_to_db(clientId,
 
     db_instance = next(get_db_instance())
     try:
+        # 创建商品源数据记录
         new_product_src = ProductSrcDetail(
             gid=clientId,
             spu_image_url=spu_image_url,
@@ -65,9 +66,10 @@ def set_product_src_to_db(clientId,
 
         db_instance.add(new_product_src)
         db_instance.commit()
+        # 自增id
         db_instance.refresh(new_product_src)
         product_src_id = new_product_src.id
-
+        # 创建任务记录：任务已创建、等待后台处理
         new_gen_task = DbProductTaskDetail(
             gid=clientId,
             product_src_id=product_src_id,
@@ -148,12 +150,14 @@ def shop_product_generate_wrapper(task_record_id, batch_no):
     if not task_record_id:
         logger.info("task_record is None, Nothing to do")
         return True
+    # 查任务表
     task_record = session_for_thread.query(DbProductTaskDetail).filter_by(id=task_record_id).first()
     if not task_record:
         logger.info(f"task_record not found, task_record_id={task_record_id}")
         session_for_thread.close()
         return False
 
+    # 根据任务id找到原始商品数据
     product_src = session_for_thread.query(ProductSrcDetail).filter_by(id=task_record.product_src_id, gid=task_record.gid).first()
     if not product_src:
         logger.info(f"product_src not found, task_record_id={task_record_id}, product_src_id={task_record.product_src_id}")
@@ -166,12 +170,13 @@ def shop_product_generate_wrapper(task_record_id, batch_no):
     llm_model = get_model_used(task_type='shop_desc', scene=scene)
 
     try:
+        # 前端轮询查到 PROCESSING
         task_record.status = DataStatus.PROCESSING.value
         session_for_thread.commit()
 
         usage_total = None
         start_time = time.time()
-        # 生成类目
+        # 生成类目路径
         des_product_category, usage = shop_product_category(site=task_record.site,
                                                             spu_image_url=product_src.spu_image_url,
                                                             sku_image_url_list=product_src.sku_image_url_list,
@@ -253,6 +258,7 @@ def shop_product_generate_wrapper(task_record_id, batch_no):
         session_for_thread.close()
 
 
+# 通知动作
 def notice_wrapper(gid, task_type, biz_id, notice_content, batch_no, notice_url, db_instance, custom_data=None,
                    notice_id=None, task_id=None):
     if notice_id:
@@ -280,20 +286,24 @@ def notice_wrapper(gid, task_type, biz_id, notice_content, batch_no, notice_url,
         db_instance.refresh(record)
 
     try:
+        # 通知状态改为进程中
         record.status = NoticeStatus.PROCESSING.value
         headers = {
             'Content-Type': 'application/json'
         }
+        # 转为python字典
         notice_content = json.loads(record.notice_content)
         notice_content['task_id'] = notice_content.get('task_id') or task_id
         notice_content['custom_data'] = record.custom_data
         notice_content = filter_product_response(notice_content)
+        # 调用通知地址
         response = requests.post(record.notice_url, headers=headers, json=notice_content)
     except Exception as error:
         record.remark = str(error)
         response = None
 
     if response and response.status_code == 200:
+        # 成功则改为success
         record.status = NoticeStatus.SUCCESS.value
         record.remark = 'success'
         ret = True
@@ -308,7 +318,7 @@ def notice_wrapper(gid, task_type, biz_id, notice_content, batch_no, notice_url,
     db_instance.commit()
     return ret
 
-
+# 通知时间：指数退避
 def get_next_notice_time(notice_counts, next_notice_time):
     if next_notice_time is None:
         next_notice_time = datetime.datetime.now()
@@ -324,10 +334,12 @@ def get_product_des_by_task(task_id):
         return DataStatus.FAIL.value, None, None, None
 
     try:
+        # 任务表查询task_id
         task_record = db_instance.query(DbProductTaskDetail).filter_by(id=task_id).first()
         if not task_record:
             return DataStatus.FAIL.value, None, None, None
 
+        # 如果任务状态已经是成功，再去结果表 ProductDesDetail 查商品生成结果
         if task_record.status == DataStatus.SUCCESS.value:
             product_des_record = db_instance.query(ProductDesDetail).filter_by(id=task_record.product_des_id).first()
             return task_record.status, product_des_record, task_record.usage, task_record.model_name

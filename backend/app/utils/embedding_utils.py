@@ -17,7 +17,7 @@ from backend.app.utils.cache_utils import get_json, set_json
 def _norm_text(text: str) -> str:
     return (text or "").strip().lower()
 
-
+# embedding向量的redis缓存
 def _build_embedding_cache_key(model_name: str, text: str) -> str:
     payload = f"{_norm_text(model_name)}|{_norm_text(text)}"
     digest = hashlib.sha1(payload.encode("utf-8")).hexdigest()
@@ -34,9 +34,8 @@ def _get_embedding_conf(db):
     model_name = model_obj.value if model_obj else None
     return api_key, base_url, model_name
 
-
+# 文本转向量
 def get_embedding(text: str) -> List[float]:
-    """生成embedding向量"""
     db = next(get_db_instance())
     try:
         embedding_api_key, embedding_base_url, embedding_model = _get_embedding_conf(db)
@@ -53,9 +52,10 @@ def get_embedding(text: str) -> List[float]:
         from openai import OpenAI
 
         client = OpenAI(api_key=embedding_api_key, base_url=embedding_base_url)
+        # 生成向量
         response = client.embeddings.create(model=embedding_model, input=text)
         embedding = response.data[0].embedding
-
+        # 向量写入缓存里
         set_json(cache_key, embedding, ttl_seconds=EMBEDDING_CACHE_TTL_SECONDS)
         return embedding
     except Exception as error:
@@ -65,11 +65,13 @@ def get_embedding(text: str) -> List[float]:
         db.close()
 
 
-# 相似度计算：余弦相似度
+# 余弦相似度：两个向量的点积/两个向量长度的乘积
 def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
     arr1 = np.array(vec1)
     arr2 = np.array(vec2)
+    # 点积
     dot_product = np.dot(arr1, arr2)
+    # 长度
     norm1 = np.linalg.norm(arr1)
     norm2 = np.linalg.norm(arr2)
     if norm1 == 0 or norm2 == 0:
@@ -77,7 +79,7 @@ def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
     return float(dot_product / (norm1 * norm2))
 
 
-# 向量库
+# 批次向量
 def batch_get_embeddings(texts: List[str]) -> List[List[float]]:
     if not texts:
         return []

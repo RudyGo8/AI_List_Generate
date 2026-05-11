@@ -12,6 +12,7 @@ from backend.app.services.category_matcher import rank_categories_hybrid
 def get_category_exchange(category_path_content, platform_id=None, site='shop_test'):
     db = next(get_db_instance())
     try:
+        # 当前站点下的可用类目
         all_categories = db.query(Category).filter(
             Category.site == site,
             Category.enable == 1
@@ -20,9 +21,9 @@ def get_category_exchange(category_path_content, platform_id=None, site='shop_te
         if not all_categories:
             return [{"category_path": category_path_content, "category_id": "DEFAULT"}]
 
+        # ORM对象转为python字典列表
         category_list = [
-            {'category_path': cat.category_path, 'category_id': cat.category_id}
-            for cat in all_categories
+            {'category_path': cat.category_path, 'category_id': cat.category_id} for cat in all_categories
         ]
 
         similar_categories = rank_categories_hybrid(

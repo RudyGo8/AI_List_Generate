@@ -31,6 +31,7 @@ dependencies = [
   "pydantic-core==2.41.5",
   "pymysql==1.1.2",
   "python-dateutil==2.9.0.post0",
+  "redis>=7.4.0",
   "requests==2.32.5",
   "scikit-learn>=1.8.0",
   "six==1.17.0",
