@@ -34,6 +34,18 @@ def _bm25_score(query_tokens, tf, doc_len, avgdl, n_docs, df_map, k1=1.2, b=0.75
     return score
 
 
+def _rank_by_score(scores: List[float | None]) -> Dict[int, int]:
+    ranked_items = [
+        (index, score) for index, score in enumerate(scores) if score is not None
+    ]
+    ranked_items.sort(key=lambda item: item[1], reverse=True)
+    return {index: rank for rank, (index, _) in enumerate(ranked_items, start=1)}
+
+
+def _rrf_score(ranks: List[int | None], k: int = 60) -> float:
+    return sum(1.0 / (k + rank) for rank in ranks if rank is not None)
+
+
 # 混合检索
 def rank_categories_hybrid(query_text: str, category_list: List[Dict], top_k: int = 3) -> List[Dict]:
     if not category_list:
@@ -68,40 +80,40 @@ def rank_categories_hybrid(query_text: str, category_list: List[Dict], top_k: in
             )
         )
 
-    bm25_min = min(bm25_raw_scores) if bm25_raw_scores else 0.0
-    bm25_max = max(bm25_raw_scores) if bm25_raw_scores else 0.0
-
-    # 分数归一化
-    def _bm25_norm(v: float) -> float:
-        if bm25_max - bm25_min < 1e-12:
-            return 0.0
-        return (v - bm25_min) / (bm25_max - bm25_min)
-
-
     query_embedding = get_embedding(query_text)
     category_texts = [item.get('category_path', '') for item in category_list]
     category_embeddings = batch_get_embeddings(category_texts)
 
-    ranked = []
-    for index, category in enumerate(category_list):
-        path = category.get('category_path', '')
-        emb_score = 0.0
+    embedding_raw_scores = []
+    for index, _category in enumerate(category_list):
+        emb_score = None
         if query_embedding and index < len(category_embeddings) and category_embeddings[index]:
             emb_score = cosine_similarity(query_embedding, category_embeddings[index])
+        embedding_raw_scores.append(emb_score)
+
+    bm25_ranks = _rank_by_score(bm25_raw_scores)
+    embedding_ranks = _rank_by_score(embedding_raw_scores)
+
+    ranked = []
+    for index, category in enumerate(category_list):
+        emb_score = embedding_raw_scores[index]
 
         # key_score = _keyword_overlap_score(query_text, path)
         # score = emb_score * 0.8 + key_score * 0.2
 
         bm25_raw = bm25_raw_scores[index]
-        # 归一化
-        bm25_norm = _bm25_norm(bm25_raw)
-        emb_norm = (emb_score + 1.0) / 2.0
+        emb_norm = (emb_score + 1.0) / 2.0 if emb_score is not None else 0.0
 
-        score = emb_score * 0.7 + bm25_norm * 0.3
+        bm25_rank = bm25_ranks.get(index)
+        embedding_rank = embedding_ranks.get(index)
+        score = _rrf_score([embedding_rank, bm25_rank])
+
         ranked.append({
             **category,
             'embedding_similarity': emb_norm,
             'keyword_score': bm25_raw,
+            'embedding_rank': embedding_rank,
+            'keyword_rank': bm25_rank,
             'score': score,
         })
 
