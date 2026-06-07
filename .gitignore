@@ -1,6 +1,4 @@
 .env
-.env.compose
-backend/.env.compose
 .venv/
 venv/
 .uv-cache/
