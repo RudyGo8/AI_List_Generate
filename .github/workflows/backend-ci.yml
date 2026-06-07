@@ -10,9 +10,6 @@ on:
 jobs:
   backend-quality:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
 
     steps:
       - name: Checkout
@@ -24,13 +21,13 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version-file: backend/.python-version
+          python-version-file: .python-version
 
       - name: Sync dependencies (frozen)
         run: uv sync --frozen --group dev
 
       - name: Ruff check
-        run: uv run ruff check app
+        run: uv run ruff check backend/app
 
       - name: Import smoke test
-        run: uv run python -c "import app.main"
+        run: uv run python -c "import backend.app.main"

@@ -7,8 +7,6 @@
 import json
 
 
-import json
-
 def to_list(value):
   if isinstance(value, list):
       return value
